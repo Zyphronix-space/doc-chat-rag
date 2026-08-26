@@ -13,6 +13,10 @@ from sentence_transformers import SentenceTransformer
 
 CHROMA_PATH = "chroma_db"
 COLLECTION_NAME = "documents"
+# Chunks farther than this (squared L2, on MiniLM embeddings) are treated as
+# irrelevant to the query and dropped — keeps casual messages ("hi", "thanks")
+# from being force-fit into an unrelated document excerpt.
+MAX_RELEVANT_DISTANCE = 1.6
 
 embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
 client = chromadb.PersistentClient(path=CHROMA_PATH)
@@ -36,14 +40,21 @@ def ingest_document(filename: str, text: str) -> int:
 
 def retrieve_chunks(question: str, top_k: int = 4) -> list[dict]:
     query_embedding = embedding_model.encode([question]).tolist()
-    results = collection.query(query_embeddings=query_embedding, n_results=top_k)
+    results = collection.query(
+        query_embeddings=query_embedding,
+        n_results=top_k,
+        include=["documents", "metadatas", "distances"],
+    )
 
     if not results["documents"] or not results["documents"][0]:
         return []
 
     return [
         {"text": doc, "source": meta["source"]}
-        for doc, meta in zip(results["documents"][0], results["metadatas"][0])
+        for doc, meta, distance in zip(
+            results["documents"][0], results["metadatas"][0], results["distances"][0]
+        )
+        if distance <= MAX_RELEVANT_DISTANCE
     ]
 
 

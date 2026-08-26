@@ -11,11 +11,13 @@ Run with:
 
 import io
 import os
+from urllib.parse import quote
 
 import pdfplumber
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from google import genai
 from google.genai import types as genai_types
 from google.genai.errors import APIError
@@ -32,6 +34,7 @@ app.add_middleware(
     allow_origins=["http://localhost:5173"],
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Sources"],
 )
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
@@ -39,9 +42,13 @@ GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
 gemini_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
 SYSTEM_PROMPT = (
-    "You answer questions using only the provided document excerpts. "
-    "If the excerpts don't contain the answer, say you don't know instead "
-    "of guessing. Keep answers concise."
+    "You're the assistant inside a document-chat app. When document excerpts "
+    "are provided below, answer strictly from those excerpts and say you "
+    "don't know rather than guessing if they don't cover it. If no excerpts "
+    "are provided, the user is just chatting (a greeting, thanks, small talk) "
+    "— reply naturally and briefly. Match the user's tone: informal or "
+    "casual messages (including slang/Gen-Z phrasing) get a relaxed, "
+    "informal reply back, not a stiff formal one. Keep answers concise."
 )
 
 
@@ -53,11 +60,6 @@ class UploadResponse(BaseModel):
 
 class ChatRequest(BaseModel):
     question: str
-
-
-class ChatResponse(BaseModel):
-    answer: str
-    sources: list[str]
 
 
 def extract_text(filename: str, file_bytes: bytes) -> str:
@@ -97,36 +99,38 @@ async def upload(file: UploadFile = File(...)):
     return UploadResponse(filename=file.filename, chunks_added=chunks_added, sources=list_sources())
 
 
-@app.post("/chat", response_model=ChatResponse)
+@app.post("/chat")
 async def chat(req: ChatRequest):
     if not req.question.strip():
         raise HTTPException(status_code=400, detail="Question cannot be empty")
 
-    chunks = retrieve_chunks(req.question)
-    if not chunks:
-        return ChatResponse(
-            answer="No documents have been uploaded yet — upload one first.",
-            sources=[],
-        )
-
     if gemini_client is None:
         raise HTTPException(status_code=500, detail="GEMINI_API_KEY is not configured on the server")
 
-    context = "\n\n".join(f"[{c['source']}]\n{c['text']}" for c in chunks)
-    prompt = f"Document excerpts:\n\n{context}\n\nQuestion: {req.question}"
+    chunks = retrieve_chunks(req.question)
+    if chunks:
+        context = "\n\n".join(f"[{c['source']}]\n{c['text']}" for c in chunks)
+        prompt = f"Document excerpts:\n\n{context}\n\nQuestion: {req.question}"
+    else:
+        prompt = req.question
 
-    try:
-        response = gemini_client.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=prompt,
-            config=genai_types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT,
-                max_output_tokens=1024,
-            ),
-        )
-    except APIError as exc:
-        raise HTTPException(status_code=502, detail=f"Gemini API error: {exc}") from exc
-
-    answer = response.text
     sources = sorted({c["source"] for c in chunks})
-    return ChatResponse(answer=answer, sources=sources)
+
+    def token_stream():
+        try:
+            stream = gemini_client.models.generate_content_stream(
+                model=GEMINI_MODEL,
+                contents=prompt,
+                config=genai_types.GenerateContentConfig(
+                    system_instruction=SYSTEM_PROMPT,
+                    max_output_tokens=1024,
+                ),
+            )
+            for event in stream:
+                if event.text:
+                    yield event.text
+        except APIError as exc:
+            yield f"\n\n[Gemini API error: {exc}]"
+
+    headers = {"X-Sources": quote(",".join(sources), safe=",")}
+    return StreamingResponse(token_stream(), media_type="text/plain", headers=headers)
