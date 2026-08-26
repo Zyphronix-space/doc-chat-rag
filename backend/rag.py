@@ -65,6 +65,10 @@ def list_sources() -> list[str]:
     return sorted({meta["source"] for meta in data["metadatas"]})
 
 
+def delete_source(filename: str) -> None:
+    collection.delete(where={"source": filename})
+
+
 def reset_collection() -> None:
     global collection
     client.delete_collection(COLLECTION_NAME)

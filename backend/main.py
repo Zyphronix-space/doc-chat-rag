@@ -10,8 +10,8 @@ Run with:
 """
 
 import io
+import json
 import os
-from urllib.parse import quote
 
 import pdfplumber
 from dotenv import load_dotenv
@@ -23,7 +23,7 @@ from google.genai import types as genai_types
 from google.genai.errors import APIError
 from pydantic import BaseModel
 
-from rag import ingest_document, list_sources, reset_collection, retrieve_chunks
+from rag import delete_source, ingest_document, list_sources, reset_collection, retrieve_chunks
 
 load_dotenv()
 
@@ -34,7 +34,6 @@ app.add_middleware(
     allow_origins=["http://localhost:5173"],
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Sources"],
 )
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
@@ -85,6 +84,12 @@ def clear_documents():
     return {"status": "cleared"}
 
 
+@app.delete("/documents/one")
+def delete_document(filename: str):
+    delete_source(filename)
+    return {"sources": list_sources()}
+
+
 @app.post("/upload", response_model=UploadResponse)
 async def upload(file: UploadFile = File(...)):
     if not file.filename.lower().endswith((".pdf", ".txt", ".md")):
@@ -114,9 +119,20 @@ async def chat(req: ChatRequest):
     else:
         prompt = req.question
 
-    sources = sorted({c["source"] for c in chunks})
+    # Dedupe citations by source file, keeping the first (best-ranked) snippet per file.
+    citations = []
+    seen = set()
+    for c in chunks:
+        if c["source"] in seen:
+            continue
+        seen.add(c["source"])
+        snippet = c["text"][:240] + ("…" if len(c["text"]) > 240 else "")
+        citations.append({"source": c["source"], "snippet": snippet})
 
     def token_stream():
+        # First line is a JSON metadata blob (citations); everything after the
+        # first newline is raw streamed answer text.
+        yield json.dumps({"citations": citations}) + "\n"
         try:
             stream = gemini_client.models.generate_content_stream(
                 model=GEMINI_MODEL,
@@ -132,5 +148,4 @@ async def chat(req: ChatRequest):
         except APIError as exc:
             yield f"\n\n[Gemini API error: {exc}]"
 
-    headers = {"X-Sources": quote(",".join(sources), safe=",")}
-    return StreamingResponse(token_stream(), media_type="text/plain", headers=headers)
+    return StreamingResponse(token_stream(), media_type="text/plain")

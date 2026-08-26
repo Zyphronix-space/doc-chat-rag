@@ -17,8 +17,18 @@ by Gemini (free tier), grounded only in chunks retrieved from the document
   - Verified live: asked a question against a test doc, and when the
     question implied a detail the doc didn't contain, Gemini correctly
     reported what the doc actually said instead of inventing an answer.
-- **`frontend/`** — React (Vite) UI: upload a document, see it listed, ask
-  questions in a chat view with the source file cited under each answer.
+  - Retrieval also drops chunks below a relevance threshold, so a casual
+    message ("hi", "thanks") doesn't get force-fit into an unrelated
+    document excerpt — the model just replies naturally instead.
+  - `/chat` streams the answer via `StreamingResponse` (token-by-token,
+    not wait-for-the-whole-thing), with a first metadata line carrying
+    per-source citation snippets.
+- **`frontend/`** — React (Vite) UI, laid out like NotebookLM/Perplexity:
+  a persistent sources sidebar (upload, list, remove) + a chat panel where
+  answers stream in live and carry numbered citation chips — click one to
+  expand the exact passage it was grounded in, instead of a flat "Sources:"
+  line. Includes suggested starter prompts, a stop-generating control, and
+  markdown-rendered answers.
 
 ## Running it
 
@@ -75,3 +85,15 @@ alongside the answer so a user can verify the citation themselves.
 the running chat history, so a follow-up like "what about the third one?"
 without restating context may retrieve the wrong chunks. A production
 version would rewrite the query using chat history before retrieval.
+
+**Why click-to-expand citations instead of a plain source list?** Modeled
+on NotebookLM's and Perplexity's citation UX — surfacing the source name
+alone doesn't let a user verify the claim without leaving the app; showing
+the exact retrieved passage inline does, at the cost of one click instead
+of zero.
+
+**Why a custom streaming protocol instead of Server-Sent Events?** The
+citation metadata (which chunks got retrieved) is known before generation
+starts, so it's sent as a single JSON line before the token stream rather
+than a separate request — one round trip, no extra library, and the
+frontend only needs a plain `ReadableStream` reader, not an SSE parser.
