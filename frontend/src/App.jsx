@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
 import './App.css'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
@@ -180,7 +181,11 @@ function App() {
             <div className={`avatar ${m.role}`}>{m.role === 'user' ? 'Y' : 'AI'}</div>
             <div className={`bubble ${m.role}`}>
               {m.content ? (
-                <p>{m.content}</p>
+                m.role === 'assistant' ? (
+                  <ReactMarkdown>{m.content}</ReactMarkdown>
+                ) : (
+                  <p>{m.content}</p>
+                )
               ) : (
                 <span className="typing">
                   <span />
