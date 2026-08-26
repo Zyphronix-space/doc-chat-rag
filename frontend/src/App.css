@@ -1,0 +1,129 @@
+.page {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 40px 20px 80px;
+  text-align: left;
+}
+
+h1 {
+  font-size: 1.8rem;
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  color: var(--text-muted, #888);
+  margin-bottom: 32px;
+  line-height: 1.5;
+}
+
+.upload-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.upload-button {
+  padding: 10px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--border, #444);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.source-pill {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(128, 128, 128, 0.15);
+  font-size: 0.85rem;
+}
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 200px;
+  border-top: 1px solid var(--border, #444);
+  border-bottom: 1px solid var(--border, #444);
+  padding: 20px 0;
+  margin-bottom: 20px;
+}
+
+.bubble {
+  max-width: 85%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+}
+
+.bubble p {
+  margin: 0;
+}
+
+.bubble.user {
+  align-self: flex-end;
+  background: #646cff;
+  color: white;
+}
+
+.bubble.assistant {
+  align-self: flex-start;
+  background: rgba(128, 128, 128, 0.15);
+}
+
+.bubble-sources {
+  margin-top: 6px !important;
+  font-size: 0.75rem !important;
+  opacity: 0.7;
+}
+
+.ask-form {
+  display: flex;
+  gap: 10px;
+}
+
+.ask-form input {
+  flex: 1;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border, #444);
+  background: transparent;
+  color: inherit;
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.ask-form button {
+  padding: 10px 20px;
+  border-radius: 6px;
+  border: none;
+  background: #646cff;
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ask-form button:disabled,
+.upload-button:has(input:disabled) {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.error {
+  color: #ff6b6b;
+  margin-bottom: 12px;
+}
+
+.muted {
+  color: var(--text-muted, #888);
+}
