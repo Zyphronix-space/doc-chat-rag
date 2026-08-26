@@ -3,7 +3,11 @@ import ReactMarkdown from 'react-markdown'
 import './App.css'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-const REQUEST_TIMEOUT_MS = 30000
+// Whole-document requests (summarize/explain) feed the model far more
+// context than a normal retrieval-based answer, so they can legitimately
+// take much longer — the timeout has to cover that, not just a quick Q&A.
+const REQUEST_TIMEOUT_MS = 60000
+const THINK_LONGER_TIMEOUT_MS = 90000
 
 function buildSuggestions(sources) {
   if (sources.length === 0) {
@@ -35,6 +39,7 @@ function App() {
   const [uploading, setUploading] = useState(false)
   const [sending, setSending] = useState(false)
   const [dragActive, setDragActive] = useState(false)
+  const [thinkLonger, setThinkLonger] = useState(false)
   const [error, setError] = useState(null)
   const fileInputRef = useRef(null)
   const chatEndRef = useRef(null)
@@ -121,13 +126,14 @@ function App() {
 
     const controller = new AbortController()
     controllerRef.current = controller
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+    const timeoutMs = thinkLonger ? THINK_LONGER_TIMEOUT_MS : REQUEST_TIMEOUT_MS
+    const timeout = setTimeout(() => controller.abort(), timeoutMs)
 
     try {
       const res = await fetch(`${API_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: asked }),
+        body: JSON.stringify({ question: asked, think_longer: thinkLonger }),
         signal: controller.signal,
       })
       clearTimeout(timeout)
@@ -313,6 +319,22 @@ function App() {
           </div>
 
           {error && <p className="error">{error}</p>}
+
+          <div className="composer-controls">
+            <button
+              type="button"
+              className={`think-toggle ${thinkLonger ? 'active' : ''}`}
+              onClick={() => setThinkLonger((v) => !v)}
+              aria-pressed={thinkLonger}
+              title="Spend more reasoning effort for a more thorough answer"
+            >
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 2a7 7 0 0 0-4 12.7V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.3A7 7 0 0 0 12 2Z" />
+                <path d="M9 21h6" strokeLinecap="round" />
+              </svg>
+              Think longer
+            </button>
+          </div>
 
           <form onSubmit={handleAsk} className="ask-form">
             <input

@@ -23,6 +23,14 @@ by Gemini (free tier), grounded only in chunks retrieved from the document
   - `/chat` streams the answer via `StreamingResponse` (token-by-token,
     not wait-for-the-whole-thing), with a first metadata line carrying
     per-source citation snippets.
+  - "Summarize X" / "explain X" / a message naming an uploaded file bypass
+    similarity search and pull the whole document's chunks (capped at 80)
+    instead — a top-k similarity search against a vague command like
+    "summarize" returns near-random chunks, not the ones that would
+    actually cover the document.
+  - A "Think longer" toggle raises Gemini's thinking budget (256 → 8192)
+    and output ceiling for questions that need more reasoning, mirroring
+    ChatGPT's reasoning-effort control.
 - **`frontend/`** — React (Vite) UI, laid out like NotebookLM/Perplexity:
   a persistent sources sidebar (upload, list, remove) + a chat panel where
   answers stream in live and carry numbered citation chips — click one to
@@ -97,3 +105,19 @@ citation metadata (which chunks got retrieved) is known before generation
 starts, so it's sent as a single JSON line before the token stream rather
 than a separate request — one round trip, no extra library, and the
 frontend only needs a plain `ReadableStream` reader, not an SSE parser.
+
+**Why `gemini-3.5-flash-lite` instead of the full flash model?** Found the
+hard way: the full `gemini-3.6-flash` free tier caps out at **20 requests
+per day per project** — easy to exhaust in a single testing session, and
+it's what made the app look randomly broken ("works, then stops working
+for no reason"). The `-lite` tier carries a much higher free-tier daily
+quota, at the cost of somewhat shallower reasoning — a reasonable trade
+for a chat-over-your-own-notes app. Errors are also now caught and shown
+as a readable "hit the rate limit, try again" message instead of a raw
+JSON dump in the chat.
+
+**Why does "summarize" sometimes take 30–45 seconds?** Feeding a whole
+80-chunk document to the model is a lot more input than a normal
+retrieval-based answer (4 chunks), so it's genuinely slower — not stuck.
+The frontend timeout is set high enough (60s, 90s for Think Longer) to
+not cut it off, and the typing indicator stays visible the whole time.

@@ -1,3 +1,8 @@
+#root {
+  width: 100%;
+  border-inline: none;
+}
+
 .page {
   width: 100%;
   flex: 1;
@@ -410,6 +415,36 @@
     transform: translateY(-4px);
     opacity: 1;
   }
+}
+
+/* Composer controls */
+.composer-controls {
+  display: flex;
+}
+
+.think-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.think-toggle:hover {
+  border-color: var(--accent-border);
+}
+
+.think-toggle.active {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  color: var(--text-h);
 }
 
 /* Ask form */

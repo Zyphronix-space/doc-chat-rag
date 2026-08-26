@@ -58,6 +58,15 @@ def retrieve_chunks(question: str, top_k: int = 4) -> list[dict]:
     ]
 
 
+def get_document_chunks(source: str, limit: int = 80) -> list[dict]:
+    """All chunks for one source, in original order — used for whole-document
+    intents (summarize/explain/etc.) where top-k similarity search would only
+    surface a handful of chunks out of a much longer document."""
+    data = collection.get(where={"source": source}, include=["documents", "metadatas"])
+    pairs = sorted(zip(data["documents"], data["metadatas"]), key=lambda p: p[1]["chunk_index"])
+    return [{"text": doc, "source": meta["source"]} for doc, meta in pairs[:limit]]
+
+
 def list_sources() -> list[str]:
     data = collection.get()
     if not data["metadatas"]:

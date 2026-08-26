@@ -12,6 +12,7 @@ Run with:
 import io
 import json
 import os
+import re
 
 import pdfplumber
 from dotenv import load_dotenv
@@ -23,7 +24,14 @@ from google.genai import types as genai_types
 from google.genai.errors import APIError
 from pydantic import BaseModel
 
-from rag import delete_source, ingest_document, list_sources, reset_collection, retrieve_chunks
+from rag import (
+    delete_source,
+    get_document_chunks,
+    ingest_document,
+    list_sources,
+    reset_collection,
+    retrieve_chunks,
+)
 
 load_dotenv()
 
@@ -37,7 +45,7 @@ app.add_middleware(
 )
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 gemini_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
 SYSTEM_PROMPT = (
@@ -50,6 +58,22 @@ SYSTEM_PROMPT = (
     "informal reply back, not a stiff formal one. Keep answers concise."
 )
 
+# "summarize/explain/what's this about" style commands need the whole document,
+# not the handful of chunks a similarity search would return for a vague query.
+WHOLE_DOC_INTENT_RE = re.compile(r"\b(summar\w*|overview|tl;?dr|explain)\b", re.IGNORECASE)
+
+FAST_THINKING_BUDGET = 256
+DEEP_THINKING_BUDGET = 8192
+
+
+def find_mentioned_source(question: str, sources: list[str]) -> str | None:
+    q = question.lower()
+    for source in sources:
+        stem = source.rsplit(".", 1)[0].lower()
+        if source.lower() in q or (len(stem) > 3 and stem in q):
+            return source
+    return None
+
 
 class UploadResponse(BaseModel):
     filename: str
@@ -59,6 +83,7 @@ class UploadResponse(BaseModel):
 
 class ChatRequest(BaseModel):
     question: str
+    think_longer: bool = False
 
 
 def extract_text(filename: str, file_bytes: bytes) -> str:
@@ -112,7 +137,15 @@ async def chat(req: ChatRequest):
     if gemini_client is None:
         raise HTTPException(status_code=500, detail="GEMINI_API_KEY is not configured on the server")
 
-    chunks = retrieve_chunks(req.question)
+    sources = list_sources()
+    target = find_mentioned_source(req.question, sources)
+    if target:
+        chunks = get_document_chunks(target)
+    elif WHOLE_DOC_INTENT_RE.search(req.question) and len(sources) == 1:
+        chunks = get_document_chunks(sources[0])
+    else:
+        chunks = retrieve_chunks(req.question)
+
     if chunks:
         context = "\n\n".join(f"[{c['source']}]\n{c['text']}" for c in chunks)
         prompt = f"Document excerpts:\n\n{context}\n\nQuestion: {req.question}"
@@ -129,6 +162,15 @@ async def chat(req: ChatRequest):
         snippet = c["text"][:240] + ("…" if len(c["text"]) > 240 else "")
         citations.append({"source": c["source"], "snippet": snippet})
 
+    thinking_budget = DEEP_THINKING_BUDGET if req.think_longer else FAST_THINKING_BUDGET
+    max_tokens = 4096 if req.think_longer else 1024
+    system_instruction = SYSTEM_PROMPT
+    if req.think_longer:
+        system_instruction += (
+            " The user asked you to think longer about this one — reason through it "
+            "carefully and give a more thorough, detailed answer than usual."
+        )
+
     def token_stream():
         # First line is a JSON metadata blob (citations); everything after the
         # first newline is raw streamed answer text.
@@ -138,14 +180,18 @@ async def chat(req: ChatRequest):
                 model=GEMINI_MODEL,
                 contents=prompt,
                 config=genai_types.GenerateContentConfig(
-                    system_instruction=SYSTEM_PROMPT,
-                    max_output_tokens=1024,
+                    system_instruction=system_instruction,
+                    max_output_tokens=max_tokens,
+                    thinking_config=genai_types.ThinkingConfig(thinking_budget=thinking_budget),
                 ),
             )
             for event in stream:
                 if event.text:
                     yield event.text
         except APIError as exc:
-            yield f"\n\n[Gemini API error: {exc}]"
+            if exc.code == 429:
+                yield "\n\n_Hit the free-tier rate limit — wait a few seconds and try again._"
+            else:
+                yield f"\n\n_Gemini API error: {exc}_"
 
     return StreamingResponse(token_stream(), media_type="text/plain")
