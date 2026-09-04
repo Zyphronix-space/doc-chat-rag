@@ -1,0 +1,18 @@
+import { Link } from 'react-router-dom'
+
+export default function CollectionCard({ collection, onDelete }) {
+  return (
+    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 flex flex-col gap-2">
+      <div className="flex items-start justify-between">
+        <Link to={`/collections/${collection.id}`} className="font-medium text-gray-900 dark:text-gray-100 hover:text-accent-600 dark:hover:text-accent-400">
+          📁 {collection.name}
+        </Link>
+        <button onClick={() => onDelete(collection)} className="text-xs text-red-500 hover:underline">
+          Delete
+        </button>
+      </div>
+      {collection.description && <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">{collection.description}</p>}
+      <p className="text-xs text-gray-400 mt-auto">{collection.document_count} document{collection.document_count === 1 ? '' : 's'}</p>
+    </div>
+  )
+}

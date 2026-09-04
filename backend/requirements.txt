@@ -7,3 +7,10 @@ chromadb
 langchain-text-splitters
 google-genai
 python-dotenv
+sqlalchemy
+bcrypt
+pyjwt
+email-validator
+pytest
+pytest-asyncio
+httpx
