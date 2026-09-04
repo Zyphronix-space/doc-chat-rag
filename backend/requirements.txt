@@ -11,6 +11,7 @@ sqlalchemy
 bcrypt
 pyjwt
 email-validator
+gunicorn
 pytest
 pytest-asyncio
 httpx

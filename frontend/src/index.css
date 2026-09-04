@@ -34,6 +34,49 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  color: #111827; /* gray-900 */
+}
+
+:root.dark body {
+  color: #f3f4f6; /* gray-100 */
+}
+
+/* Form controls don't reliably inherit `color` from ancestors across
+   browsers, so every bare <input>/<textarea>/<select> in the app (most of
+   which only set `bg-transparent` + a border, no explicit text color)
+   was rendering near-invisible black-on-dark text in dark mode. Fixed
+   globally here instead of adding text-color classes to every field. */
+input,
+textarea,
+select {
+  color: inherit;
+}
+input::placeholder,
+textarea::placeholder {
+  color: #9ca3af; /* gray-400 */
+}
+:root.dark input::placeholder,
+:root.dark textarea::placeholder {
+  color: #6b7280; /* gray-500 */
+}
+
+/* Chrome/Edge autofill forces its own black-on-light-blue style via an
+   internal UA stylesheet that ignores `color`/`background` — the only way
+   to override it is this -webkit-text-fill-color + delayed-transition
+   box-shadow trick (fills the field background without touching the real
+   `background` property, which autofill would otherwise re-override). */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #111827;
+  box-shadow: 0 0 0 1000px #f3f4f6 inset;
+  transition: background-color 9999s ease-in-out 0s;
+}
+:root.dark input:-webkit-autofill,
+:root.dark input:-webkit-autofill:hover,
+:root.dark input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #f3f4f6;
+  box-shadow: 0 0 0 1000px #374151 inset;
 }
 
 * {

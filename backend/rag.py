@@ -11,6 +11,7 @@ Chroma itself has no notion of users or documents, this file is what makes
 it behave like a multi-tenant store.
 """
 
+import os
 import uuid
 
 import chromadb
@@ -18,6 +19,8 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
 
 import config
+
+os.makedirs(config.CHROMA_PATH, exist_ok=True)
 
 COLLECTION_NAME = "documents"
 # Chunks farther than this (squared L2, on MiniLM embeddings) are treated as
