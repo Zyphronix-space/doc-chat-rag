@@ -22,6 +22,8 @@ jobs:
           mkdir -p backend/.python_packages/lib/site-packages
           pip install --no-cache-dir -r backend/requirements.txt \
             -t backend/.python_packages/lib/site-packages
+          du -sh backend/.python_packages
+          ls backend/.python_packages/lib/site-packages | head -20
       - uses: actions/upload-artifact@v4
         with:
           name: python-packages

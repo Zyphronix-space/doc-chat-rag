@@ -1,7 +1,10 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
 fastapi
 uvicorn[standard]
 python-multipart
 pdfplumber
+torch
 sentence-transformers
 chromadb
 pysqlite3-binary
