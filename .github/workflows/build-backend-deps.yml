@@ -28,4 +28,5 @@ jobs:
         with:
           name: python-packages
           path: backend/.python_packages
+          include-hidden-files: true
           retention-days: 3
