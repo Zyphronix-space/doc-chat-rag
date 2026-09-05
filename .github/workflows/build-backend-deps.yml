@@ -1,0 +1,29 @@
+name: Build backend dependencies (Linux wheels)
+
+# One-off/manual helper: installs backend/requirements.txt on a Linux
+# runner (matching Azure App Service's PYTHON|3.12 Linux container) and
+# uploads the result as a build artifact, so it can be deployed without
+# Azure having to pip install heavy packages (torch, chromadb,
+# sentence-transformers) itself -- which was timing out Azure's own
+# zip-deploy gateway.
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies into .python_packages (Oryx layout)
+        run: |
+          mkdir -p backend/.python_packages/lib/site-packages
+          pip install --no-cache-dir -r backend/requirements.txt \
+            -t backend/.python_packages/lib/site-packages
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-packages
+          path: backend/.python_packages
+          retention-days: 3

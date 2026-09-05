@@ -12,6 +12,19 @@ Run with:
     uvicorn main:app --reload
 """
 
+# Azure App Service's Python base image ships a system sqlite3 older than
+# Chroma's minimum (3.35.0). Swap in pysqlite3-binary's bundled modern
+# sqlite3 before anything (rag.py -> chromadb) imports the stdlib module.
+# Harmless locally/elsewhere: falls back to the stdlib sqlite3 silently if
+# pysqlite3 isn't installed.
+try:
+    __import__("pysqlite3")
+    import sys
+
+    sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
+except ImportError:
+    pass
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
