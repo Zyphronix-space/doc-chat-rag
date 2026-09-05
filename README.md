@@ -1,5 +1,8 @@
 # DocMind — AI Document Intelligence Workspace
 
+**Live demo:** https://polite-coast-06d46f000.6.azurestaticapps.net
+(backend API: https://docintel-api-stephan.azurewebsites.net/health)
+
 A multi-user AI knowledge workspace: upload documents, organize them into
 collections, and chat against one document, several, or a whole collection —
 with every answer exposing exactly which chunks (and, for PDFs, which real
