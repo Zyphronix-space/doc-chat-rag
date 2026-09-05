@@ -311,17 +311,46 @@ sources panel's existing `lg:` collapse.
 
 ## Deployment
 
-No live deployment exists for this project (verified: no Dockerfile/CI
-config in the repo). To deploy it, the same pattern used for this
-portfolio's other projects applies directly: an App Service (or any
-container host) for the FastAPI backend with `DATABASE_URL`,
-`CHROMA_PATH`, and `UPLOAD_DIR` pointed at a persistent disk/volume
-(SQLite + Chroma + uploads are all just files — they need to survive
-restarts), and a Static Web App (or any static host) for the built
-frontend (`npm run build`, `VITE_API_URL` pointed at the deployed
-backend). `GEMINI_API_KEY`, `JWT_SECRET`, and `FRONTEND_URL` are
-server-side environment variables only — never shipped to the frontend
-build.
+Live on Azure:
+
+- **App**: https://polite-coast-06d46f000.6.azurestaticapps.net
+- **API**: https://docintel-api-stephan.azurewebsites.net (`/health`)
+
+Backend on an App Service (Linux, Python 3.12, B1), `DATABASE_URL`,
+`CHROMA_PATH`, and `UPLOAD_DIR` all pointed at the `/home` volume, which is
+the persistent disk on Linux App Service — anywhere else (`/tmp`,
+wwwroot-adjacent paths) gets wiped on restart, and SQLite + Chroma + the
+uploaded files are all just files on disk. Frontend on a Static Web App,
+built with `VITE_API_URL` pointed at the backend above. `GEMINI_API_KEY`,
+`JWT_SECRET`, and `FRONTEND_URL` are server-side app settings only — never
+shipped to the frontend build.
+
+Three real deployment-specific problems came up getting this live, each
+found from actual failed/slow deploys, not anticipated in advance:
+
+- **`requirements.txt`'s PyTorch pin used `--extra-index-url` for the
+  CPU-only wheel index instead of `--index-url`.** `--extra-index-url` is
+  a lower-priority fallback, so the resolver picked plain `torch` off
+  PyPI's default index — the CUDA-bundled build, which drags in ~15
+  `nvidia-cuda-*`/`triton` packages nobody needs on a CPU App Service plan.
+  Bytecode-compiling those 17,000+ files during the Oryx build blew past
+  the deploy timeout. Fixed by making the CPU index primary
+  (`--index-url https://download.pytorch.org/whl/cpu`) and PyPI the
+  fallback (`--extra-index-url https://pypi.org/simple`) — same
+  `requirements.txt`, correct wheel.
+- **Container startup probe timeout.** `sentence-transformers` downloads
+  `all-MiniLM-L6-v2` from the Hugging Face Hub the first time `rag.py` is
+  imported, which is slower than Azure's default 230s startup probe. Fixed
+  with `WEBSITES_CONTAINER_START_TIME_LIMIT=600` (matched to gunicorn's own
+  `--timeout 600`) and `HF_HOME=/home/data/hf_cache` so the model is cached
+  on the persistent volume and only downloads once, not on every restart.
+- **SPA routing 404s on Static Web Apps.** Direct navigation to a
+  client-side route (`/signup`, `/dashboard`, ...) isn't a real static
+  file, so without a fallback rule the host returns a genuine 404 instead
+  of serving `index.html` and letting react-router handle it. Fixed with
+  `frontend/public/staticwebapp.config.json`'s `navigationFallback`
+  rewrite (excluding `/assets/*` and the SVGs so real static assets still
+  resolve directly).
 
 ## Security
 
