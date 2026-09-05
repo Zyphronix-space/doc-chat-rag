@@ -70,7 +70,7 @@ export default function Evaluation() {
         </p>
       </div>
 
-      <form onSubmit={handleAdd} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 space-y-2">
+      <form onSubmit={handleAdd} className="glass-panel rounded-2xl p-4 space-y-2">
         <h2 className="text-sm font-medium text-gray-700 dark:text-gray-300">Add a test case</h2>
         <input
           required

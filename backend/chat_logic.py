@@ -21,11 +21,17 @@ from google.genai.errors import APIError
 SYSTEM_PROMPT = (
     "You're the assistant inside a document-chat app. When document excerpts "
     "are provided below, answer strictly from those excerpts and say you "
-    "don't know rather than guessing if they don't cover it. If no excerpts "
-    "are provided, the user is just chatting (a greeting, thanks, small talk) "
-    "— reply naturally and briefly. Match the user's tone: informal or "
-    "casual messages (including slang/Gen-Z phrasing) get a relaxed, "
-    "informal reply back, not a stiff formal one. Keep answers concise."
+    "don't know rather than guessing if they don't cover it. If the user has "
+    "documents selected for this conversation but no excerpt was relevant "
+    "enough to retrieve for this specific question, say plainly that you "
+    "couldn't find that information in the selected documents — never answer "
+    "such a question from your own general knowledge instead. If no documents "
+    "are selected at all, the user is just chatting (a greeting, thanks, small "
+    "talk, or a general-knowledge question with nothing to ground it in) — "
+    "reply naturally and briefly, and it's fine to answer from general "
+    "knowledge in that case. Match the user's tone: informal or casual "
+    "messages (including slang/Gen-Z phrasing) get a relaxed, informal reply "
+    "back, not a stiff formal one. Keep answers concise."
 )
 
 # "summarize/explain/what's this about" style commands need the whole document,
@@ -71,8 +77,21 @@ def build_citations(chunks: list[dict]) -> list[dict]:
     return citations
 
 
-def build_prompt(question: str, chunks: list[dict]) -> str:
+def build_prompt(question: str, chunks: list[dict], has_scope: bool = False) -> str:
+    """`has_scope` distinguishes "no documents selected at all" (bare
+    question, casual-chat territory) from "documents are selected but
+    nothing relevant was retrieved for this question" (must still trigger
+    the system prompt's "say you couldn't find it" behavior, not a
+    free-knowledge answer) — without this, both cases produced an identical
+    bare-question prompt and the model couldn't tell them apart."""
     if not chunks:
+        if has_scope:
+            return (
+                "The user has documents selected for this conversation, but no excerpt "
+                "was relevant enough to retrieve for this question. Tell them you "
+                "couldn't find that information in the selected documents.\n\n"
+                f"Question: {question}"
+            )
         return question
     context = "\n\n".join(f"[{c['source']}]\n{c['text']}" for c in chunks)
     return f"Document excerpts:\n\n{context}\n\nQuestion: {question}"

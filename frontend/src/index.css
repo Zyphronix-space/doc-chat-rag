@@ -6,20 +6,80 @@
    this replaces the old prefers-color-scheme-only behavior. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* DocMind "Liquid Glass" palette — blue is the primary brand color, cyan
+   is a restrained highlight (glow/active accents only, never a dominant
+   fill — kept out of buttons/large surfaces on purpose so the app reads as
+   a premium productivity tool, not a neon dashboard), on soft neutral
+   glass surfaces (translucent white cards + backdrop blur; dark navy in
+   dark mode). Replaces the previous purple accent scale 1:1 by name so
+   every existing `accent-*` Tailwind class across the app just re-themes. */
 @theme {
-  --color-accent-50: #faf5ff;
-  --color-accent-100: #f3e8ff;
-  --color-accent-200: #e9d5ff;
-  --color-accent-300: #d8b4fe;
-  --color-accent-400: #c084fc;
-  --color-accent-500: #aa3bff;
-  --color-accent-600: #9021e6;
-  --color-accent-700: #7318b8;
-  --color-accent-800: #5b1491;
-  --color-accent-900: #3f0e66;
+  --color-accent-50: #eef4ff;
+  --color-accent-100: #dbe7fe;
+  --color-accent-200: #bed6fd;
+  --color-accent-300: #8fbbfb;
+  --color-accent-400: #5897f6;
+  --color-accent-500: #2f6fed;
+  --color-accent-600: #2054d1;
+  --color-accent-700: #1c44a8;
+  --color-accent-800: #1c3a85;
+  --color-accent-900: #1b3269;
+
+  --color-cyan-glow: #22d3ee;
 
   --font-sans: system-ui, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, Consolas, monospace;
+}
+
+/* Glass surface tokens, layered on top of Tailwind's utility classes rather
+   than replacing them — a `.glass-panel` adds translucency + blur + a thin
+   light-catching top edge on top of whatever bg/border classes an element
+   already has. */
+:root {
+  --glass-bg: rgba(255, 255, 255, 0.68);
+  --glass-bg-raised: rgba(255, 255, 255, 0.82);
+  --glass-border: rgba(20, 30, 55, 0.08);
+  --glass-highlight: rgba(255, 255, 255, 0.9);
+  --glass-shadow: 0 1px 1px rgba(20, 30, 55, 0.03), 0 12px 32px -16px rgba(20, 30, 55, 0.18);
+  --glass-blur: blur(20px) saturate(160%);
+}
+:root.dark {
+  --glass-bg: rgba(15, 23, 42, 0.6);
+  --glass-bg-raised: rgba(24, 33, 56, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-highlight: rgba(255, 255, 255, 0.06);
+  --glass-shadow: 0 1px 1px rgba(255, 255, 255, 0.04), 0 16px 40px -16px rgba(0, 0, 0, 0.55);
+}
+
+.glass-panel {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  position: relative;
+}
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .glass-panel {
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+  }
+}
+.glass-panel-raised {
+  background: var(--glass-bg-raised);
+}
+
+/* A soft gradient wash for glass surfaces to float over — flat gray reads
+   flat, not "spatial"; this gives the backdrop-blur something to blur. */
+.app-bg {
+  background:
+    radial-gradient(1200px 600px at 15% -10%, rgba(47, 111, 237, 0.10), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgba(34, 211, 238, 0.07), transparent 55%),
+    #f6f8fc;
+}
+:root.dark .app-bg {
+  background:
+    radial-gradient(1200px 600px at 15% -10%, rgba(47, 111, 237, 0.16), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgba(34, 211, 238, 0.08), transparent 55%),
+    #05070d;
 }
 
 html,
@@ -81,6 +141,15 @@ input:-webkit-autofill:focus {
 
 * {
   scrollbar-width: thin;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
 }
 
 .markdown-body p {

@@ -35,6 +35,26 @@ class TokenResponse(BaseModel):
     user: UserOut
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ForgotPasswordResponse(BaseModel):
+    message: str
+    demo_reset_link: str | None = None
+    expires_in_minutes: int | None = None
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(min_length=8, max_length=200)
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8, max_length=200)
+
+
 # ---------------------------------------------------------------------------
 # Collections
 # ---------------------------------------------------------------------------
@@ -91,6 +111,14 @@ class DocumentOut(BaseModel):
 class DocumentUpdate(BaseModel):
     display_name: str | None = Field(default=None, min_length=1, max_length=255)
     collection_id: int | None = Field(default=None, description="Pass explicitly (incl. null) to move/unfile")
+
+
+class SemanticSearchResult(BaseModel):
+    document_id: int
+    document_name: str
+    snippet: str
+    page_number: int | None
+    distance: float
 
 
 # ---------------------------------------------------------------------------
@@ -159,6 +187,24 @@ class ChatMessageRequest(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Sources (cross-conversation citation ledger)
+# ---------------------------------------------------------------------------
+
+
+class SourceListItem(BaseModel):
+    id: int
+    document_id: int
+    document_name: str
+    conversation_id: int
+    conversation_title: str
+    message_id: int
+    page_number: int | None
+    snippet: str
+    distance: float | None
+    created_at: datetime
+
+
+# ---------------------------------------------------------------------------
 # Dashboard
 # ---------------------------------------------------------------------------
 
@@ -174,6 +220,17 @@ class DashboardSummary(BaseModel):
 class DashboardRecent(BaseModel):
     recent_documents: list[DocumentOut]
     recent_conversations: list[ConversationOut]
+
+
+class DayCount(BaseModel):
+    date: str
+    count: int
+
+
+class DashboardAnalytics(BaseModel):
+    documents_by_status: dict[str, int]
+    total_questions_asked: int
+    messages_over_time: list[DayCount]
 
 
 # ---------------------------------------------------------------------------

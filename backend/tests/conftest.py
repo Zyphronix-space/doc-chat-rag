@@ -15,6 +15,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 # this env var at import time, so it can only be set once, process-wide.
 os.environ.setdefault("CHROMA_PATH", os.path.join(tempfile.mkdtemp(prefix="doc-chat-rag-test-chroma-"), "chroma_db"))
 os.environ.setdefault("UPLOAD_DIR", os.path.join(tempfile.mkdtemp(prefix="doc-chat-rag-test-uploads-"), "uploads"))
+# The suite registers dozens of throwaway users back-to-back via
+# register_and_login -- disable the auth rate limiter globally here so that
+# behavior doesn't trip on normal test volume. test_password_reset.py
+# re-enables it (via monkeypatch) for the one test that actually exercises it.
+os.environ.setdefault("RATE_LIMIT_DISABLED", "true")
 
 import models  # noqa: E402 — registers tables on db.Base before create_all
 import db as db_module  # noqa: E402

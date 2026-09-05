@@ -22,8 +22,13 @@ def test_every_protected_route_requires_auth(client):
         ("get", "/conversations"),
         ("get", "/dashboard/summary"),
         ("get", "/dashboard/recent"),
+        ("get", "/dashboard/analytics"),
         ("get", "/eval/cases"),
         ("get", "/auth/me"),
+        ("get", "/sources"),
+        ("get", "/documents/semantic-search?q=x"),
+        ("patch", "/auth/change-password"),
+        ("delete", "/auth/me"),
     ]
     for method, path in routes:
         res = getattr(client, method)(path)

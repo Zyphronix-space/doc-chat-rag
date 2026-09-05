@@ -111,7 +111,7 @@ def run_eval(
             retrieval_hit = case.expected_source_document_id in retrieved_document_ids
             hits.append(retrieval_hit)
 
-        prompt = chat_logic.build_prompt(case.question, chunks)
+        prompt = chat_logic.build_prompt(case.question, chunks, has_scope=bool(all_ready_ids))
         answer = chat_logic.generate_full_answer(gemini_client, config.GEMINI_MODEL, prompt)
 
         faithfulness_score = None

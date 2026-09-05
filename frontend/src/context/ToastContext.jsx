@@ -34,12 +34,12 @@ export function ToastProvider({ children }) {
           <div
             key={t.id}
             role="status"
-            className={`rounded-lg px-4 py-3 text-sm shadow-lg border animate-in fade-in slide-in-from-bottom-2 ${
+            className={`glass-panel glass-panel-raised rounded-xl px-4 py-3 text-sm animate-in fade-in slide-in-from-bottom-2 border-l-4 ${
               t.type === 'error'
-                ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-950 dark:border-red-800 dark:text-red-200'
+                ? 'border-l-red-500 text-red-700 dark:text-red-300'
                 : t.type === 'success'
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-950 dark:border-emerald-800 dark:text-emerald-200'
-                  : 'bg-white border-gray-200 text-gray-800 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100'
+                  ? 'border-l-emerald-500 text-emerald-700 dark:text-emerald-300'
+                  : 'border-l-accent-500 text-gray-800 dark:text-gray-100'
             }`}
           >
             {t.message}

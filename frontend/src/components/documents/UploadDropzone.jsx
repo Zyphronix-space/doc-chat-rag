@@ -2,6 +2,12 @@ import { useRef, useState } from 'react'
 import { uploadDocument } from '../../api/documents'
 import { useToast } from '../../context/ToastContext'
 
+const ALLOWED_EXTENSIONS = ['.pdf', '.txt', '.md']
+// Mirrors backend/config.py's MAX_FILE_SIZE_MB default — this is a
+// fast-fail UX nicety only; the server re-validates both checks
+// authoritatively regardless of what the client thinks.
+const MAX_FILE_SIZE_MB = 20
+
 export default function UploadDropzone({ collectionId, onUploaded }) {
   const [dragActive, setDragActive] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -11,6 +17,19 @@ export default function UploadDropzone({ collectionId, onUploaded }) {
 
   const doUpload = async (file) => {
     if (!file) return
+
+    const ext = `.${file.name.split('.').pop()?.toLowerCase() || ''}`
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      toast.error(`"${file.name}": only PDF, TXT, or MD files are supported.`)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
+    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+      toast.error(`"${file.name}" exceeds the ${MAX_FILE_SIZE_MB}MB limit.`)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
+
     setUploading(true)
     setProgress(0)
     try {

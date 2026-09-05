@@ -5,12 +5,29 @@ Uses `bcrypt` directly (not passlib) — passlib's bcrypt backend probes
 breaks against the bcrypt version this project installs.
 """
 
+import hashlib
+import secrets
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
 import jwt
 
 import config
+
+RESET_TOKEN_TTL = timedelta(minutes=30)
+
+
+def generate_reset_token() -> str:
+    """A URL-safe random token handed to the caller exactly once. Only its
+    hash (below) is ever persisted."""
+    return secrets.token_urlsafe(32)
+
+
+def hash_token(token: str) -> str:
+    """SHA-256 is fine here (unlike passwords, this token is already
+    high-entropy random data, not something a dictionary attack could
+    guess) -- same idea as GitHub/Django's reset-token storage."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
 def hash_password(password: str) -> str:

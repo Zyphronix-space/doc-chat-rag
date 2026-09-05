@@ -2,14 +2,7 @@ import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
-
-const LINKS = [
-  { to: '/', label: 'Dashboard', end: true },
-  { to: '/documents', label: 'Documents' },
-  { to: '/collections', label: 'Collections' },
-  { to: '/conversations', label: 'Chat' },
-  { to: '/eval', label: 'Evaluation' },
-]
+import { NAV_LINKS } from '../../lib/navLinks'
 
 export default function Topbar() {
   const { user, logout } = useAuth()
@@ -17,7 +10,7 @@ export default function Topbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
-    <header className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950">
+    <header className="glass-panel rounded-none border-x-0 border-t-0">
       <div className="flex items-center justify-between px-4 py-2.5">
         <button
           className="md:hidden text-gray-600 dark:text-gray-300"
@@ -26,19 +19,24 @@ export default function Topbar() {
         >
           ☰
         </button>
-        <div className="flex-1" />
+        <button
+          className="hidden md:flex items-center gap-1.5 text-xs text-gray-400 border border-gray-200 dark:border-gray-700 rounded-full px-3 py-1.5 hover:border-accent-400 hover:text-accent-600 dark:hover:text-accent-400"
+          onClick={() => window.dispatchEvent(new CustomEvent('docmind:open-palette'))}
+        >
+          <span aria-hidden>⌘K</span> Search or jump to…
+        </button>
         <div className="flex items-center gap-3">
           <button
             onClick={toggle}
             title="Toggle theme"
-            className="w-8 h-8 flex items-center justify-center rounded-md text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="w-8 h-8 flex items-center justify-center rounded-full text-gray-500 dark:text-gray-300 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
           >
             {theme === 'dark' ? '☀️' : '\u{1F319}'}
           </button>
           <span className="hidden sm:inline text-sm text-gray-600 dark:text-gray-300">{user?.email}</span>
           <button
             onClick={logout}
-            className="text-sm px-3 py-1.5 rounded-md border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+            className="text-sm px-3 py-1.5 rounded-full border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-black/[0.03] dark:hover:bg-white/[0.05]"
           >
             Log out
           </button>
@@ -46,11 +44,10 @@ export default function Topbar() {
       </div>
       {mobileOpen && (
         <nav className="md:hidden px-4 pb-3 flex flex-col gap-1">
-          {LINKS.map((l) => (
+          {NAV_LINKS.map((l) => (
             <NavLink
               key={l.to}
               to={l.to}
-              end={l.end}
               onClick={() => setMobileOpen(false)}
               className={({ isActive }) =>
                 `px-3 py-2 rounded-md text-sm font-medium ${

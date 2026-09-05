@@ -6,10 +6,12 @@ import {
   createConversation,
   deleteConversation,
 } from '../api/conversations'
+import { listDocuments } from '../api/documents'
 import { useChatStream } from '../hooks/useChatStream'
 import ConversationSidebar from '../components/chat/ConversationSidebar'
 import ScopePicker from '../components/chat/ScopePicker'
 import MessageBubble from '../components/chat/MessageBubble'
+import Citation from '../components/chat/Citation'
 import Composer from '../components/chat/Composer'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import ErrorState from '../components/common/ErrorState'
@@ -33,23 +35,43 @@ function toDisplayMessages(detail) {
   }))
 }
 
+// A scroll container is "near the bottom" if within this many pixels of it —
+// auto-scroll only kicks in then, so a user who's scrolled up to re-read
+// earlier messages isn't yanked back down by a new streaming token.
+const NEAR_BOTTOM_PX = 120
+
 export default function Chat() {
   const { id } = useParams()
   const navigate = useNavigate()
   const toast = useToast()
   const [conversations, setConversations] = useState([])
   const [conversation, setConversation] = useState(null)
+  const [documentNames, setDocumentNames] = useState({})
   const [error, setError] = useState(null)
   const [thinkLonger, setThinkLonger] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
   const [pendingDelete, setPendingDelete] = useState(null)
   const [confirmClear, setConfirmClear] = useState(false)
+  const [showScrollButton, setShowScrollButton] = useState(false)
+  const [sourcesPanelOpen, setSourcesPanelOpen] = useState(true)
+  const [mobileScopeOpen, setMobileScopeOpen] = useState(false)
+  const scrollRef = useRef(null)
   const chatEndRef = useRef(null)
 
   const { messages, setMessages, sending, error: streamError, ask, stopGenerating } = useChatStream(id)
 
   useEffect(() => {
     listConversations().then(setConversations).catch(() => {})
+  }, [id])
+
+  useEffect(() => {
+    listDocuments()
+      .then((docs) => setDocumentNames(Object.fromEntries(docs.map((d) => [d.id, d.display_name]))))
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    setMobileScopeOpen(false)
   }, [id])
 
   useEffect(() => {
@@ -63,9 +85,25 @@ export default function Chat() {
       .catch((err) => setError(err.message))
   }, [id])
 
+  const isNearBottom = () => {
+    const el = scrollRef.current
+    if (!el) return true
+    return el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX
+  }
+
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (isNearBottom()) {
+      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, sending])
+
+  const handleScroll = () => setShowScrollButton(!isNearBottom())
+
+  const scrollToBottom = () => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    setShowScrollButton(false)
+  }
 
   const handleCreate = async (scope) => {
     try {
@@ -120,37 +158,88 @@ export default function Chat() {
 
   if (error) return <ErrorState message={error} onRetry={() => window.location.reload()} />
 
-  const scopeLabel = conversation
-    ? conversation.scope_type === 'collection'
-      ? 'Searching a collection'
-      : `Searching ${conversation.scope_document_ids.length} document${conversation.scope_document_ids.length === 1 ? '' : 's'}`
-    : ''
+  const lastAssistantWithCitations = [...messages].reverse().find((m) => m.role === 'assistant' && m.citations?.length > 0)
 
   return (
-    <div className="flex h-full">
-      <ConversationSidebar conversations={conversations} onNew={() => setShowPicker(true)} onDelete={setPendingDelete} />
+    <div className="flex h-full relative">
+      {mobileScopeOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-40 bg-black/40"
+          onClick={() => setMobileScopeOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      <aside
+        className={`${mobileScopeOpen ? 'flex' : 'hidden'} md:flex flex-col w-72 md:w-64 shrink-0 border-r border-black/[0.06] dark:border-white/[0.06] overflow-hidden fixed md:static inset-y-0 left-0 z-50 md:z-auto glass-panel-raised md:bg-transparent md:backdrop-blur-none rounded-none border-y-0 md:border-l-0`}
+      >
+        <button
+          onClick={() => setMobileScopeOpen(false)}
+          className="md:hidden self-end p-2 text-gray-400 hover:text-gray-600"
+          aria-label="Close"
+        >
+          ✕
+        </button>
+        {conversation && (
+          <div className="p-3 border-b border-black/[0.06] dark:border-white/[0.06]">
+            <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-1.5">
+              {conversation.scope_type === 'collection' ? 'Collection scope' : 'Sources'}
+            </p>
+            {conversation.scope_type === 'collection' ? (
+              <p className="text-sm text-gray-600 dark:text-gray-300">Every ready document in this collection</p>
+            ) : (
+              <ul className="space-y-1">
+                {conversation.scope_document_ids.map((docId) => (
+                  <li key={docId} className="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-1.5 truncate">
+                    <span className="text-emerald-500 shrink-0">✓</span>
+                    <span className="truncate">{documentNames[docId] || `Document #${docId}`}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+        <ConversationSidebar conversations={conversations} onNew={() => setShowPicker(true)} onDelete={setPendingDelete} />
+      </aside>
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 relative">
         {!conversation ? (
           <div className="flex-1 flex items-center justify-center">
             <Spinner size={28} />
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950">
-              <div>
-                <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{conversation.title}</h1>
-                <p className="text-xs text-gray-400">{scopeLabel}</p>
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-black/[0.06] dark:border-white/[0.06] glass-panel rounded-none border-x-0 border-t-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <button
+                  onClick={() => setMobileScopeOpen(true)}
+                  className="md:hidden text-gray-400 hover:text-gray-600 shrink-0"
+                  aria-label="Show conversations and sources"
+                >
+                  ☰
+                </button>
+                <div className="min-w-0">
+                  <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{conversation.title}</h1>
+                  <p className="text-xs text-gray-400">
+                    {conversation.scope_type === 'collection'
+                      ? 'Searching a collection'
+                      : `Searching ${conversation.scope_document_ids.length} document${conversation.scope_document_ids.length === 1 ? '' : 's'}`}
+                  </p>
+                </div>
               </div>
-              <button
-                onClick={() => setConfirmClear(true)}
-                className="text-xs text-gray-400 hover:text-red-500"
-              >
-                Clear conversation
-              </button>
+              <div className="flex items-center gap-3 shrink-0">
+                <button
+                  onClick={() => setSourcesPanelOpen((v) => !v)}
+                  className="hidden lg:inline text-xs text-gray-400 hover:text-accent-600"
+                >
+                  {sourcesPanelOpen ? 'Hide sources panel' : 'Show sources panel'}
+                </button>
+                <button onClick={() => setConfirmClear(true)} className="text-xs text-gray-400 hover:text-red-500">
+                  Clear conversation
+                </button>
+              </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+            <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
               {messages.length === 0 && (
                 <p className="text-sm text-gray-400 text-center py-8">
                   Ask anything about the documents in scope, or just say hi.
@@ -167,6 +256,15 @@ export default function Chat() {
               <div ref={chatEndRef} />
             </div>
 
+            {showScrollButton && (
+              <button
+                onClick={scrollToBottom}
+                className="absolute bottom-24 left-1/2 -translate-x-1/2 text-xs px-3 py-1.5 rounded-full glass-panel glass-panel-raised text-gray-600 dark:text-gray-300 shadow-md"
+              >
+                ↓ Scroll to bottom
+              </button>
+            )}
+
             {streamError && <p className="px-4 text-sm text-red-500">{streamError}</p>}
 
             <Composer
@@ -179,6 +277,19 @@ export default function Chat() {
           </>
         )}
       </div>
+
+      {sourcesPanelOpen && (
+        <aside className="hidden lg:flex w-72 shrink-0 border-l border-black/[0.06] dark:border-white/[0.06] flex-col overflow-y-auto p-3 gap-2">
+          <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide px-1">Sources for this answer</p>
+          {!lastAssistantWithCitations ? (
+            <p className="text-sm text-gray-400 px-1 py-4">No citations yet — ask a question to see sources here.</p>
+          ) : (
+            lastAssistantWithCitations.citations.map((c, idx) => (
+              <Citation key={`${c.document_id}-${c.chunk_id}`} citation={c} index={idx} />
+            ))
+          )}
+        </aside>
+      )}
 
       <ScopePicker open={showPicker} onClose={() => setShowPicker(false)} onCreate={handleCreate} />
       <ConfirmDialog

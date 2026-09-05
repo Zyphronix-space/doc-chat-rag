@@ -18,7 +18,7 @@ from ingestion import (
     validate_upload,
 )
 from models import Document, DocumentStatus, User
-from schemas import DocumentOut, DocumentUpdate
+from schemas import DocumentOut, DocumentUpdate, SemanticSearchResult
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -134,6 +134,7 @@ async def upload_document(
 def list_documents(
     collection_id: int | None = None,
     status_filter: DocumentStatus | None = None,
+    q: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -142,7 +143,45 @@ def list_documents(
         query = query.filter(Document.collection_id == collection_id)
     if status_filter is not None:
         query = query.filter(Document.status == status_filter)
+    if q:
+        query = query.filter(Document.display_name.ilike(f"%{q}%"))
     return query.order_by(Document.uploaded_at.desc()).all()
+
+
+@router.get("/semantic-search", response_model=list[SemanticSearchResult])
+def semantic_search_documents(
+    q: str,
+    limit: int = 8,
+    current_user: User = Depends(get_current_user),
+):
+    """Searches the actual content of every one of the user's documents
+    (not just filenames) by reusing the same embed-and-retrieve path the
+    chat endpoint uses -- already scoped to `current_user.id` and already
+    distance-thresholded (irrelevant chunks are dropped, same as chat).
+    Results are grouped by document, keeping each document's best-ranked
+    (closest) chunk as its representative snippet."""
+    if not q.strip():
+        return []
+
+    chunks = rag.retrieve_chunks(q, current_user.id, document_ids=None, top_k=limit * 4)
+
+    best_by_document: dict[int, dict] = {}
+    for chunk in chunks:
+        doc_id = chunk["document_id"]
+        if doc_id not in best_by_document or chunk["distance"] < best_by_document[doc_id]["distance"]:
+            best_by_document[doc_id] = chunk
+
+    ranked = sorted(best_by_document.values(), key=lambda c: c["distance"])[:limit]
+    return [
+        SemanticSearchResult(
+            document_id=c["document_id"],
+            document_name=c["source"],
+            snippet=c["text"][:280] + ("…" if len(c["text"]) > 280 else ""),
+            page_number=c.get("page_number"),
+            distance=c["distance"],
+        )
+        for c in ranked
+    ]
 
 
 @router.get("/{document_id}", response_model=DocumentOut)

@@ -61,6 +61,7 @@ class User(Base):
     collections: Mapped[list["Collection"]] = relationship(back_populates="owner", cascade="all, delete-orphan")
     conversations: Mapped[list["Conversation"]] = relationship(back_populates="owner", cascade="all, delete-orphan")
     eval_cases: Mapped[list["EvalCase"]] = relationship(back_populates="owner", cascade="all, delete-orphan")
+    reset_tokens: Mapped[list["PasswordResetToken"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
 class Collection(Base):
@@ -176,6 +177,23 @@ class Source(Base):
 
     message: Mapped["Message"] = relationship(back_populates="sources")
     document: Mapped["Document"] = relationship(back_populates="sources")
+
+
+class PasswordResetToken(Base):
+    """The raw token is only ever handed to the caller once (in the demo-mode
+    UI banner, since no mail provider is configured — see README) — only its
+    SHA-256 hash is stored, matching the same discipline as password hashing."""
+
+    __tablename__ = "password_reset_tokens"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    user: Mapped["User"] = relationship(back_populates="reset_tokens")
 
 
 class EvalCase(Base):

@@ -36,7 +36,7 @@ export default function ScopePicker({ open, onClose, onCreate }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
-        className="bg-white dark:bg-gray-900 rounded-xl shadow-xl max-w-md w-full p-5 max-h-[80vh] flex flex-col"
+        className="glass-panel glass-panel-raised rounded-2xl max-w-md w-full p-5 max-h-[80vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">Start a new chat</h3>

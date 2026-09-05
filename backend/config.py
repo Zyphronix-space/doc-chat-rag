@@ -26,6 +26,11 @@ CORS_ORIGINS = [
     if origin.strip()
 ]
 
+# Used only to build the password-reset link. No email provider is
+# configured in this project, so the link is returned directly in the
+# /auth/forgot-password response instead of being emailed — see README.
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+
 JWT_SECRET_WAS_GENERATED = False
 if not JWT_SECRET:
     # A dev-only fallback so `uvicorn main:app` still boots without extra setup,

@@ -76,7 +76,7 @@ export default function CollectionDetail() {
         ← Back to collections
       </button>
 
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 space-y-3">
+      <div className="glass-panel rounded-2xl p-5 space-y-3">
         {editing ? (
           <CollectionForm initial={collection} onSubmit={handleSave} onCancel={() => setEditing(false)} submitLabel="Save" />
         ) : (

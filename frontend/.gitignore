@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Local-only dev override (e.g. pointing VITE_API_URL at a different port
+# for local testing) -- .env.example stays tracked.
+.env
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

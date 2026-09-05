@@ -7,6 +7,11 @@ export const listDocuments = (params = {}) => {
 
 export const getDocument = (id) => apiFetch(`/documents/${id}`)
 
+export const semanticSearchDocuments = (q, limit = 8) => {
+  const qs = new URLSearchParams({ q, limit }).toString()
+  return apiFetch(`/documents/semantic-search?${qs}`)
+}
+
 export const updateDocument = (id, patch) => apiFetch(`/documents/${id}`, { method: 'PATCH', json: patch })
 
 export const deleteDocument = (id) => apiFetch(`/documents/${id}`, { method: 'DELETE' })

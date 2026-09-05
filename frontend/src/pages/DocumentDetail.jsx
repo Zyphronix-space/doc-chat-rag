@@ -88,7 +88,7 @@ export default function DocumentDetail() {
         ← Back to documents
       </button>
 
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5 space-y-4">
+      <div className="glass-panel rounded-2xl p-5 space-y-4">
         <div className="flex items-start justify-between gap-3">
           {renaming ? (
             <div className="flex-1 flex gap-2">

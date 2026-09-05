@@ -38,6 +38,7 @@ from routers import conversations as conversations_router
 from routers import dashboard as dashboard_router
 from routers import documents as documents_router
 from routers import evaluation as evaluation_router
+from routers import sources as sources_router
 
 
 @asynccontextmanager
@@ -69,6 +70,7 @@ app.include_router(collections_router.router)
 app.include_router(conversations_router.router)
 app.include_router(dashboard_router.router)
 app.include_router(evaluation_router.router)
+app.include_router(sources_router.router)
 
 
 @app.get("/health")

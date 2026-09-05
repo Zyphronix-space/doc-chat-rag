@@ -4,7 +4,7 @@ export default function ConfirmDialog({ open, title, description, confirmLabel =
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onCancel}>
       <div
-        className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-sm w-full p-5"
+        className="glass-panel glass-panel-raised rounded-2xl max-w-sm w-full p-5"
         onClick={(e) => e.stopPropagation()}
         role="alertdialog"
         aria-modal="true"

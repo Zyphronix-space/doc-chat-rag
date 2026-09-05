@@ -205,7 +205,7 @@ def post_message(
         chunks = []
 
     citations = chat_logic.build_citations(chunks)
-    prompt = chat_logic.build_prompt(req.question, chunks)
+    prompt = chat_logic.build_prompt(req.question, chunks, has_scope=bool(scope_doc_ids))
     conversation_id_ = conv.id
     think_longer = req.think_longer
 
