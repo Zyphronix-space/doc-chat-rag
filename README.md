@@ -1,5 +1,11 @@
 # DocMind — AI Document Intelligence Workspace
 
+![Python](https://img.shields.io/badge/-Python-black?style=flat-square&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/-FastAPI-black?style=flat-square&logo=fastapi&logoColor=white)
+![Chroma](https://img.shields.io/badge/-ChromaDB-black?style=flat-square)
+![Gemini](https://img.shields.io/badge/-Gemini%20API-black?style=flat-square&logo=googlegemini&logoColor=white)
+![React](https://img.shields.io/badge/-React-black?style=flat-square&logo=react&logoColor=white)
+
 **Live demo:** https://polite-coast-06d46f000.6.azurestaticapps.net
 (backend API: https://docintel-api-stephan.azurewebsites.net/health)
 
@@ -79,15 +85,27 @@ hashing — only a SHA-256 hash of the token is persisted.
 
 ## RAG pipeline
 
-```
-Upload → validate (type/size/hash) → extract text PER PAGE → chunk per page
-  → embed (sentence-transformers, local) → Chroma (tagged with user_id,
-  document_id, page_number?, collection_id?) → [on question] embed query
-  → Chroma similarity search, scoped by user + selected documents/collection
-  → relevant chunks → Gemini (system prompt enforces "answer only from
-  these excerpts, say you couldn't find it otherwise") → streamed, grounded
-  answer + citations (document, real page number if available, exact chunk
-  text)
+```mermaid
+flowchart LR
+    subgraph Ingestion
+        U["Upload"] --> V["Validate<br/>type / size / hash"]
+        V --> X["Extract text<br/>per PDF page"]
+        X --> C["Chunk per page<br/>(800 chars, 150 overlap)"]
+        C --> EMB1["Embed<br/>(sentence-transformers, local)"]
+        EMB1 --> CH[("Chroma<br/>tagged: user_id, document_id,<br/>page_number?, collection_id?")]
+    end
+    subgraph "Question time"
+        Q["Question"] --> EMB2["Embed query"]
+        EMB2 --> SIM["Similarity search<br/>scoped to user + selection"]
+        CH --> SIM
+        SIM --> G{"Relevant chunks<br/>found?"}
+        G -- yes --> GEN["Gemini<br/>answer strictly from excerpts"]
+        G -- no --> REF["Explicit refusal<br/>never falls back to free knowledge"]
+        GEN --> OUT["Streamed answer<br/>+ citations (doc, page, chunk)"]
+    end
+
+    classDef stage fill:#6C5CE7,stroke:#4834B0,color:#fff
+    class C,EMB1,EMB2,GEN stage
 ```
 
 **Chunking.** `RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=150)`,
