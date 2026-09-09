@@ -1,10 +1,14 @@
-# DocMind — AI Document Intelligence Workspace
+<p align="center"><img src="docs/banner.svg" alt="DocMind — AI document intelligence workspace" width="100%" /></p>
 
-![Python](https://img.shields.io/badge/-Python-black?style=flat-square&logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/-FastAPI-black?style=flat-square&logo=fastapi&logoColor=white)
-![Chroma](https://img.shields.io/badge/-ChromaDB-black?style=flat-square)
-![Gemini](https://img.shields.io/badge/-Gemini%20API-black?style=flat-square&logo=googlegemini&logoColor=white)
-![React](https://img.shields.io/badge/-React-black?style=flat-square&logo=react&logoColor=white)
+<p align="center">
+<img src="https://img.shields.io/badge/-Python-0d0d16?style=flat-square&logo=python&logoColor=white" alt="Python" />
+<img src="https://img.shields.io/badge/-FastAPI-0d0d16?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI" />
+<img src="https://img.shields.io/badge/-ChromaDB-6C5CE7?style=flat-square" alt="ChromaDB" />
+<img src="https://img.shields.io/badge/-Gemini%20API-0d0d16?style=flat-square&logo=googlegemini&logoColor=white" alt="Gemini" />
+<img src="https://img.shields.io/badge/-React-0d0d16?style=flat-square&logo=react&logoColor=white" alt="React" />
+</p>
+
+# DocMind — AI Document Intelligence Workspace
 
 **Live demo:** https://polite-coast-06d46f000.6.azurestaticapps.net
 (backend API: https://docintel-api-stephan.azurewebsites.net/health)
