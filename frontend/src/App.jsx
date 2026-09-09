@@ -9,6 +9,9 @@ import Login from './pages/Login'
 import Signup from './pages/Signup'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
+import PrivacyPolicy from './pages/legal/PrivacyPolicy'
+import TermsAndConditions from './pages/legal/TermsAndConditions'
+import CookiePolicy from './pages/legal/CookiePolicy'
 
 import Dashboard from './pages/Dashboard'
 import Documents from './pages/Documents'
@@ -33,6 +36,9 @@ function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsAndConditions />} />
+        <Route path="/cookie-policy" element={<CookiePolicy />} />
       </Route>
 
       <Route element={<ProtectedRoute />}>

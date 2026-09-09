@@ -68,7 +68,7 @@ export default function Sources() {
         <GlassEmptyState
           icon="📎"
           title="No citations yet"
-          description="Ask a question in a chat scoped to your documents — the citations it produces will show up here."
+          description="Ask a question in a chat scoped to your documents. The citations it produces will show up here."
         />
       ) : (
         <div className="space-y-2.5">

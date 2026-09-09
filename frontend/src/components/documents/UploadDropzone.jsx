@@ -35,7 +35,7 @@ export default function UploadDropzone({ collectionId, onUploaded }) {
     try {
       const doc = await uploadDocument(file, { collectionId, onProgress: setProgress })
       if (doc.duplicate) {
-        toast.info(`"${file.name}" was already uploaded — reusing the existing document.`)
+        toast.info(`"${file.name}" was already uploaded. Reusing the existing document.`)
       } else if (doc.status === 'failed') {
         toast.error(`"${file.name}" failed to process: ${doc.status_error}`)
       } else {
@@ -92,7 +92,7 @@ export default function UploadDropzone({ collectionId, onUploaded }) {
           <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
             Drag & drop a file, or click to browse
           </p>
-          <p className="text-xs text-gray-400">PDF, TXT, or MD — up to 20MB</p>
+          <p className="text-xs text-gray-400">PDF, TXT, or MD, up to 20MB</p>
         </>
       )}
     </label>

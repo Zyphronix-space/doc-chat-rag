@@ -8,14 +8,14 @@ const SECTIONS = [
       ['Live processing status', 'Pending → Processing → Ready/Failed, polled live while a document is being ingested.'],
       ['Rename, move, delete', 'Rename a document, move it into a collection, or delete it (removing its extracted chunks too).'],
       ['Search & filter', 'Filter by filename, collection, or status; sort by upload date.'],
-      ['Semantic search', "Search across the actual content of every document you own, not just filenames — the same embed-and-retrieve path chat uses, so results are ranked by real relevance."],
+      ['Semantic search', "Search across the actual content of every document you own, not just filenames. It uses the same embed-and-retrieve path chat uses, so results are ranked by real relevance."],
     ],
   },
   {
     title: 'Collections',
     items: [
       ['Group related documents', 'Create folders like "University" or "Research" to organize what you upload.'],
-      ['Chat with a whole collection', "Scope a conversation to every ready document in a collection at once — add or remove documents later and the collection's chat scope updates automatically."],
+      ['Chat with a whole collection', "Scope a conversation to every ready document in a collection at once. Add or remove documents later and the collection's chat scope updates automatically."],
     ],
   },
   {
@@ -24,7 +24,7 @@ const SECTIONS = [
       ['Multi-document scope', 'Chat against one document, several, or a whole collection — the scope is always visible.'],
       ['Streaming answers', 'Responses stream in token by token, with a stop button if you change your mind.'],
       ['Grounded, not guessed', "If your documents don't cover a question, DocMind says it couldn't find the answer instead of inventing one."],
-      ['Real citations', 'Every answer shows exactly which chunks (and, for PDFs, which real page numbers) it drew from — expandable to the exact excerpt.'],
+      ['Real citations', 'Every answer shows exactly which chunks (and, for PDFs, which real page numbers) it drew from, expandable to the exact excerpt.'],
       ['Think longer', 'Optionally trade speed for a more thorough, more carefully reasoned answer.'],
     ],
   },
@@ -32,8 +32,8 @@ const SECTIONS = [
     title: 'Evaluation & analytics',
     items: [
       ['Retrieval hit-rate', 'A direct, unambiguous measurement: was the expected source document actually retrieved for a test question?'],
-      ['Faithfulness scoring', "A second model acts as a judge — always labeled as a heuristic, never presented as a certified benchmark, and only shown when it parses cleanly."],
-      ['Real usage analytics', 'Documents processed, questions asked, and activity over time — computed from your actual account data, never simulated.'],
+      ['Faithfulness scoring', "A second model acts as a judge, always labeled as a heuristic, never presented as a certified benchmark, and only shown when it parses cleanly."],
+      ['Real usage analytics', 'Documents processed, questions asked, and activity over time, computed from your actual account data, never simulated.'],
     ],
   },
 ]
@@ -45,7 +45,7 @@ export default function Features() {
         Everything DocMind actually does
       </h1>
       <p className="text-center text-gray-500 dark:text-gray-400 mt-2 max-w-xl mx-auto">
-        No placeholder features — every item below maps to something real and working.
+        No placeholder features. Every item below maps to something real and working.
       </p>
 
       <div className="mt-12 space-y-10">

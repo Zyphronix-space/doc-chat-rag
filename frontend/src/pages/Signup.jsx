@@ -70,6 +70,17 @@ export default function Signup() {
             Log in
           </Link>
         </p>
+        <p className="text-xs text-gray-400 mt-3 text-center">
+          By creating an account you agree to the{' '}
+          <Link to="/terms" className="underline hover:text-accent-600 dark:hover:text-accent-400">
+            Terms
+          </Link>{' '}
+          and{' '}
+          <Link to="/privacy-policy" className="underline hover:text-accent-600 dark:hover:text-accent-400">
+            Privacy Policy
+          </Link>
+          .
+        </p>
       </GlassCard>
     </div>
   )

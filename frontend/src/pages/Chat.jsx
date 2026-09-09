@@ -282,7 +282,7 @@ export default function Chat() {
         <aside className="hidden lg:flex w-72 shrink-0 border-l border-black/[0.06] dark:border-white/[0.06] flex-col overflow-y-auto p-3 gap-2">
           <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide px-1">Sources for this answer</p>
           {!lastAssistantWithCitations ? (
-            <p className="text-sm text-gray-400 px-1 py-4">No citations yet — ask a question to see sources here.</p>
+            <p className="text-sm text-gray-400 px-1 py-4">No citations yet. Ask a question to see sources here.</p>
           ) : (
             lastAssistantWithCitations.citations.map((c, idx) => (
               <Citation key={`${c.document_id}-${c.chunk_id}`} citation={c} index={idx} />

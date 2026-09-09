@@ -123,7 +123,7 @@ export default function DocumentDetail() {
           <dt className="text-gray-500 dark:text-gray-400">Uploaded</dt>
           <dd className="text-gray-800 dark:text-gray-200">{new Date(doc.uploaded_at).toLocaleString()}</dd>
           <dt className="text-gray-500 dark:text-gray-400">Pages</dt>
-          <dd className="text-gray-800 dark:text-gray-200">{doc.page_count ?? '—'}</dd>
+          <dd className="text-gray-800 dark:text-gray-200">{doc.page_count ?? 'N/A'}</dd>
           <dt className="text-gray-500 dark:text-gray-400">Chunks</dt>
           <dd className="text-gray-800 dark:text-gray-200">{doc.chunk_count}</dd>
           <dt className="text-gray-500 dark:text-gray-400">Collection</dt>

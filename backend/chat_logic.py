@@ -127,7 +127,7 @@ def stream_answer(gemini_client, model: str, prompt: str, citations: list[dict],
                 yield event.text
     except APIError as exc:
         if exc.code == 429:
-            yield "\n\n_Hit the free-tier rate limit — wait a few seconds and try again._"
+            yield "\n\n_Hit the free-tier rate limit. Wait a few seconds and try again._"
         else:
             yield f"\n\n_Gemini API error: {exc}_"
 

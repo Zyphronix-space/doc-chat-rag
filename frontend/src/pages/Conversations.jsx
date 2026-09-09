@@ -96,7 +96,7 @@ export default function Conversations() {
         <GlassEmptyState
           icon="💬"
           title="No conversations yet"
-          description="Chat against one document, several, or a whole collection — every answer shows exactly which chunks it came from."
+          description="Chat against one document, several, or a whole collection. Every answer shows exactly which chunks it came from."
           action={
             <GlassButton onClick={() => setShowPicker(true)}>+ New chat</GlassButton>
           }

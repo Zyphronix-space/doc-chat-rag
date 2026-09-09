@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { changePassword, deleteAccount } from '../api/auth'
 import { useAuth } from '../context/AuthContext'
 import { useToast } from '../context/ToastContext'
@@ -144,6 +144,17 @@ export default function Settings() {
         </div>
         {tab === 'profile' ? <ProfileTab user={user} /> : <SecurityTab />}
       </GlassCard>
+      <nav className="flex items-center gap-4 mt-4 text-xs text-gray-400">
+        <Link to="/privacy-policy" className="hover:text-accent-600 dark:hover:text-accent-400">
+          Privacy Policy
+        </Link>
+        <Link to="/terms" className="hover:text-accent-600 dark:hover:text-accent-400">
+          Terms and Conditions
+        </Link>
+        <Link to="/cookie-policy" className="hover:text-accent-600 dark:hover:text-accent-400">
+          Cookie Policy
+        </Link>
+      </nav>
     </div>
   )
 }

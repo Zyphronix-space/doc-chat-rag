@@ -34,7 +34,7 @@ export default function DocumentTable({ documents, collectionsById, onDelete, on
                 <StatusBadge status={d.status} />
               </td>
               <td className="px-4 py-2.5 text-gray-500 dark:text-gray-400">
-                {d.collection_id ? collectionsById?.[d.collection_id]?.name || '—' : '—'}
+                {d.collection_id ? collectionsById?.[d.collection_id]?.name || 'N/A' : 'N/A'}
               </td>
               <td className="px-4 py-2.5 text-gray-500 dark:text-gray-400">{d.chunk_count}</td>
               <td className="px-4 py-2.5 text-gray-500 dark:text-gray-400">{new Date(d.uploaded_at).toLocaleDateString()}</td>

@@ -65,7 +65,7 @@ export default function Evaluation() {
         <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">RAG evaluation</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
           A small, manually-defined test set. Retrieval hit-rate is a direct measurement (was the expected
-          source document actually retrieved?). Faithfulness uses a second Gemini call as a judge — a
+          source document actually retrieved?). Faithfulness uses a second Gemini call as a judge, a
           heuristic, not a rigorous benchmark, and is only shown when it parses cleanly.
         </p>
       </div>
@@ -80,7 +80,7 @@ export default function Evaluation() {
           className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm"
         />
         <textarea
-          placeholder="Expected answer (optional — enables faithfulness scoring)"
+          placeholder="Expected answer (optional, enables faithfulness scoring)"
           value={expectedAnswer}
           onChange={(e) => setExpectedAnswer(e.target.value)}
           rows={2}
@@ -91,7 +91,7 @@ export default function Evaluation() {
           onChange={(e) => setExpectedDocId(e.target.value)}
           className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-transparent px-3 py-2 text-sm"
         >
-          <option value="">Expected source document (optional — enables retrieval hit/miss)</option>
+          <option value="">Expected source document (optional, enables retrieval hit/miss)</option>
           {documents.map((d) => (
             <option key={d.id} value={d.id}>
               {d.display_name}

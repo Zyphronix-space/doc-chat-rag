@@ -47,7 +47,7 @@ function UsageTab({ data }) {
 
       <GlassCard>
         <h2 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Questions asked · last 30 days</h2>
-        <p className="text-xs text-gray-400 mb-4">Real activity from your account — nothing simulated.</p>
+        <p className="text-xs text-gray-400 mb-4">Real activity from your account, nothing simulated.</p>
         <ActivityBars days={data.messages_over_time} />
         <div className="flex justify-between text-[10px] text-gray-400 mt-1.5">
           <span>{data.messages_over_time[0]?.date.slice(5)}</span>
