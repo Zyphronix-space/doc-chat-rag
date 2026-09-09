@@ -4,6 +4,7 @@ import { listSources } from '../api/sources'
 import { listDocuments } from '../api/documents'
 import GlassCard from '../components/glass/GlassCard'
 import GlassEmptyState from '../components/glass/GlassEmptyState'
+import Icon from '../components/glass/Icon'
 import ErrorState from '../components/common/ErrorState'
 import Spinner from '../components/common/Spinner'
 
@@ -66,7 +67,7 @@ export default function Sources() {
         </div>
       ) : sources.length === 0 ? (
         <GlassEmptyState
-          icon="📎"
+          icon={<Icon name="clip" size={22} />}
           title="No citations yet"
           description="Ask a question in a chat scoped to your documents. The citations it produces will show up here."
         />

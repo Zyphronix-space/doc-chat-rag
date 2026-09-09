@@ -3,6 +3,7 @@ import { listCollections, createCollection, deleteCollection } from '../api/coll
 import CollectionCard from '../components/collections/CollectionCard'
 import CollectionForm from '../components/collections/CollectionForm'
 import EmptyState from '../components/common/EmptyState'
+import Icon from '../components/glass/Icon'
 import ErrorState from '../components/common/ErrorState'
 import Spinner from '../components/common/Spinner'
 import ConfirmDialog from '../components/common/ConfirmDialog'
@@ -67,7 +68,11 @@ export default function Collections() {
           <Spinner size={28} />
         </div>
       ) : collections.length === 0 ? (
-        <EmptyState icon="📁" title="No collections yet" description="Group related documents into folders, like 'University' or 'Research'." />
+        <EmptyState
+          icon={<Icon name="folder" size={28} />}
+          title="No collections yet"
+          description="Group related documents into folders, like 'University' or 'Research'."
+        />
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {collections.map((c) => (

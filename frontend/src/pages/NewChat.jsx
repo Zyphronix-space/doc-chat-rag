@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import { listConversations, createConversation } from '../api/conversations'
 import ScopePicker from '../components/chat/ScopePicker'
 import GlassEmptyState from '../components/glass/GlassEmptyState'
+import Icon from '../components/glass/Icon'
 import GlassButton from '../components/glass/GlassButton'
 import Spinner from '../components/common/Spinner'
 import { useToast } from '../context/ToastContext'
@@ -44,7 +45,7 @@ export default function NewChat() {
   return (
     <div className="flex items-center justify-center h-full p-6">
       <GlassEmptyState
-        icon="💬"
+        icon={<Icon name="chat" size={22} />}
         title="Start your first chat"
         description="Chat against one document, several, or a whole collection. Every answer shows exactly which chunks it came from."
         action={<GlassButton onClick={() => setShowPicker(true)}>+ New chat</GlassButton>}

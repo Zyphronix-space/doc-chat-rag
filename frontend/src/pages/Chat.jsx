@@ -13,6 +13,7 @@ import ScopePicker from '../components/chat/ScopePicker'
 import MessageBubble from '../components/chat/MessageBubble'
 import Citation from '../components/chat/Citation'
 import Composer from '../components/chat/Composer'
+import Icon from '../components/glass/Icon'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import ErrorState from '../components/common/ErrorState'
 import Spinner from '../components/common/Spinner'
@@ -177,7 +178,7 @@ export default function Chat() {
           className="md:hidden self-end p-2 text-gray-400 hover:text-gray-600"
           aria-label="Close"
         >
-          ✕
+          <Icon name="close" />
         </button>
         {conversation && (
           <div className="p-3 border-b border-black/[0.06] dark:border-white/[0.06]">
@@ -190,7 +191,7 @@ export default function Chat() {
               <ul className="space-y-1">
                 {conversation.scope_document_ids.map((docId) => (
                   <li key={docId} className="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-1.5 truncate">
-                    <span className="text-emerald-500 shrink-0">✓</span>
+                    <Icon name="check" size={14} className="text-emerald-500 shrink-0" />
                     <span className="truncate">{documentNames[docId] || `Document #${docId}`}</span>
                   </li>
                 ))}
@@ -215,7 +216,7 @@ export default function Chat() {
                   className="md:hidden text-gray-400 hover:text-gray-600 shrink-0"
                   aria-label="Show conversations and sources"
                 >
-                  ☰
+                  <Icon name="menu" />
                 </button>
                 <div className="min-w-0">
                   <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{conversation.title}</h1>

@@ -7,6 +7,7 @@ import UploadDropzone from '../components/documents/UploadDropzone'
 import DocumentTable from '../components/documents/DocumentTable'
 import GlassDocumentCard from '../components/glass/GlassDocumentCard'
 import GlassEmptyState from '../components/glass/GlassEmptyState'
+import Icon from '../components/glass/Icon'
 import { GlassSearchInput } from '../components/glass/GlassInput'
 import ErrorState from '../components/common/ErrorState'
 import Spinner from '../components/common/Spinner'
@@ -101,7 +102,11 @@ export default function Documents() {
           <Spinner size={28} />
         </div>
       ) : documents.length === 0 ? (
-        <GlassEmptyState icon="📄" title="No documents yet" description="Upload a PDF, TXT, or MD file above to get started." />
+        <GlassEmptyState
+          icon={<Icon name="document" size={22} />}
+          title="No documents yet"
+          description="Upload a PDF, TXT, or MD file above to get started."
+        />
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-2">

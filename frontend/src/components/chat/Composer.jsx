@@ -24,7 +24,7 @@ export default function Composer({ onSend, sending, onStop, thinkLonger, onToggl
               : 'border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400'
           }`}
         >
-          🧠 Think longer
+          Think longer
         </button>
       </div>
       <form onSubmit={submit} className="flex gap-2">

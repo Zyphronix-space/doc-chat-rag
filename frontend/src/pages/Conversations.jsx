@@ -5,6 +5,7 @@ import ScopePicker from '../components/chat/ScopePicker'
 import ConfirmDialog from '../components/common/ConfirmDialog'
 import GlassCard from '../components/glass/GlassCard'
 import GlassEmptyState from '../components/glass/GlassEmptyState'
+import Icon from '../components/glass/Icon'
 import GlassButton from '../components/glass/GlassButton'
 import { GlassSearchInput } from '../components/glass/GlassInput'
 import Spinner from '../components/common/Spinner'
@@ -94,7 +95,7 @@ export default function Conversations() {
         </div>
       ) : conversations.length === 0 ? (
         <GlassEmptyState
-          icon="💬"
+          icon={<Icon name="chat" size={22} />}
           title="No conversations yet"
           description="Chat against one document, several, or a whole collection. Every answer shows exactly which chunks it came from."
           action={

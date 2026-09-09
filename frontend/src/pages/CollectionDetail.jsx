@@ -9,6 +9,7 @@ import EmptyState from '../components/common/EmptyState'
 import ErrorState from '../components/common/ErrorState'
 import Spinner from '../components/common/Spinner'
 import { useToast } from '../context/ToastContext'
+import Icon from '../components/glass/Icon'
 
 export default function CollectionDetail() {
   const { id } = useParams()
@@ -82,7 +83,10 @@ export default function CollectionDetail() {
         ) : (
           <>
             <div className="flex items-start justify-between">
-              <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">📁 {collection.name}</h1>
+              <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                <Icon name="folder" size={18} className="shrink-0 text-gray-400" />
+                {collection.name}
+              </h1>
               <div className="flex gap-2">
                 <button onClick={() => setEditing(true)} className="text-xs text-gray-500 hover:text-accent-600">
                   Edit

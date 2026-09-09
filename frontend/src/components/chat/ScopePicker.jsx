@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { listDocuments } from '../../api/documents'
 import { listCollections } from '../../api/collections'
+import Icon from '../glass/Icon'
 
 export default function ScopePicker({ open, onClose, onCreate }) {
   const [mode, setMode] = useState('documents') // 'documents' | 'collection'
@@ -85,8 +86,9 @@ export default function ScopePicker({ open, onClose, onCreate }) {
                       checked={selectedCollectionId === c.id}
                       onChange={() => setSelectedCollectionId(c.id)}
                     />
-                    <span className="truncate">
-                      📁 {c.name} <span className="text-gray-400">({c.document_count})</span>
+                    <span className="truncate flex items-center gap-1.5">
+                      <Icon name="folder" size={14} className="shrink-0 text-gray-400" />
+                      {c.name} <span className="text-gray-400">({c.document_count})</span>
                     </span>
                   </label>
                 </li>

@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { NAV_LINKS } from '../../lib/navLinks'
+import Icon from '../glass/Icon'
 
 export default function Topbar() {
   const { user, logout } = useAuth()
@@ -17,7 +18,7 @@ export default function Topbar() {
           onClick={() => setMobileOpen((v) => !v)}
           aria-label="Toggle menu"
         >
-          ☰
+          <Icon name="menu" />
         </button>
         <button
           className="hidden md:flex items-center gap-1.5 text-xs text-gray-400 border border-gray-200 dark:border-gray-700 rounded-full px-3 py-1.5 hover:border-accent-400 hover:text-accent-600 dark:hover:text-accent-400"
@@ -31,7 +32,7 @@ export default function Topbar() {
             title="Toggle theme"
             className="w-8 h-8 flex items-center justify-center rounded-full text-gray-500 dark:text-gray-300 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
           >
-            {theme === 'dark' ? '☀️' : '\u{1F319}'}
+            <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
           </button>
           <span className="hidden sm:inline text-sm text-gray-600 dark:text-gray-300">{user?.email}</span>
           <button

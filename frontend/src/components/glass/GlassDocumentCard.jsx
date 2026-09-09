@@ -7,16 +7,17 @@ function formatSize(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-const FILE_ICON = { pdf: '📕', txt: '📄', md: '📝' }
-
 // A card-view alternative to DocumentTable's rows, for the grid layout on
 // the Documents page — same data shape, same actions.
 export default function GlassDocumentCard({ document: doc, collectionName, onDelete, onChat }) {
   return (
     <div className="glass-panel rounded-2xl p-4 flex flex-col gap-2.5">
       <div className="flex items-start justify-between gap-2">
-        <span className="text-2xl" aria-hidden="true">
-          {FILE_ICON[doc.file_type] || '📄'}
+        <span
+          aria-hidden="true"
+          className="text-[10px] font-bold tracking-wide text-white bg-accent-500 rounded-md px-1.5 py-1"
+        >
+          {(doc.file_type || 'doc').toUpperCase()}
         </span>
         <StatusBadge status={doc.status} />
       </div>
