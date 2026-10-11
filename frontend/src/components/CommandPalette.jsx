@@ -116,7 +116,7 @@ export default function CommandPalette() {
           aria-label="Search commands"
         />
         {results.length === 0 ? (
-          <p className="px-4 py-6 text-sm text-gray-400 text-center">No matching command.</p>
+          <p className="px-4 py-6 text-sm text-gray-500 dark:text-gray-400 text-center">No matching command.</p>
         ) : (
           <ul className="max-h-80 overflow-y-auto py-1.5" role="listbox">
             {results.map((c, i) => (
@@ -134,13 +134,13 @@ export default function CommandPalette() {
                   aria-selected={i === activeIndex}
                 >
                   <span className="truncate">{c.label}</span>
-                  {c.hint && <span className="text-xs text-gray-400 shrink-0">{c.hint}</span>}
+                  {c.hint && <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">{c.hint}</span>}
                 </button>
               </li>
             ))}
           </ul>
         )}
-        <p className="px-4 py-2 border-t border-gray-100 dark:border-gray-800 text-[11px] text-gray-400">
+        <p className="px-4 py-2 border-t border-gray-100 dark:border-gray-800 text-[11px] text-gray-500 dark:text-gray-400">
           ↑↓ Navigate · Enter Select · Esc Close
         </p>
       </div>

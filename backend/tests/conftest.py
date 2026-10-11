@@ -1,6 +1,8 @@
 import os
 import sys
-import tempfile
+import hashlib
+import math
+import re
 from pathlib import Path
 
 import pytest
@@ -10,16 +12,14 @@ from sqlalchemy.orm import sessionmaker
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-# Must happen before `main`/`rag` are ever imported anywhere in the test
-# process — rag.py's Chroma client is a module-level singleton built from
-# this env var at import time, so it can only be set once, process-wide.
-os.environ.setdefault("CHROMA_PATH", os.path.join(tempfile.mkdtemp(prefix="doc-chat-rag-test-chroma-"), "chroma_db"))
-os.environ.setdefault("UPLOAD_DIR", os.path.join(tempfile.mkdtemp(prefix="doc-chat-rag-test-uploads-"), "uploads"))
 # The suite registers dozens of throwaway users back-to-back via
 # register_and_login -- disable the auth rate limiter globally here so that
 # behavior doesn't trip on normal test volume. test_password_reset.py
 # re-enables it (via monkeypatch) for the one test that actually exercises it.
 os.environ.setdefault("RATE_LIMIT_DISABLED", "true")
+# The reset-flow tests read the link from the response (local demo mode);
+# test_password_reset.py separately asserts it's never returned when off.
+os.environ.setdefault("PASSWORD_RESET_DEMO_MODE", "true")
 
 import models  # noqa: E402 — registers tables on db.Base before create_all
 import db as db_module  # noqa: E402
@@ -52,18 +52,40 @@ class FakeGeminiClient:
         self.models = _Models()
 
 
+_STOPWORDS = {
+    "a", "an", "the", "is", "are", "was", "were", "of", "to", "in", "on", "for", "and", "or",
+    "it", "its", "this", "that", "what", "which", "who", "how", "does", "do", "did", "with", "by",
+}
+
+
+def _fake_embed(texts, task_type):
+    """Deterministic offline stand-in for the Gemini embedding API: a hashed
+    bag of crudely-stemmed content words, L2-normalized. Texts sharing words
+    land close together, unrelated texts are orthogonal — enough for the
+    retrieval/relevance tests without any network call."""
+    dim = 256
+    vectors = []
+    for text in texts:
+        vec = [0.0] * dim
+        for word in re.findall(r"[a-z0-9]+", text.lower()):
+            if word in _STOPWORDS:
+                continue
+            stem = re.sub(r"(ing|es|ed|s)$", "", word) if len(word) > 4 else word
+            vec[int(hashlib.md5(stem.encode()).hexdigest(), 16) % dim] += 1.0
+        norm = math.sqrt(sum(v * v for v in vec)) or 1.0
+        vectors.append([v / norm for v in vec])
+    return vectors
+
+
 @pytest.fixture(autouse=True)
-def reset_chroma():
-    """Chroma's persistent client is a module-level singleton shared by the
-    whole test process (see the CHROMA_PATH note above), but each test's
-    relational DB is a fresh SQLite file whose autoincrement ids restart at
-    1 — so without this, two tests' documents could collide on the same
-    (user_id, document_id) pair and see each other's chunks. Reset before
-    every test instead of relying on unique ids across tests."""
+def fake_embeddings(monkeypatch):
+    """No test hits the real embedding API. The fake's distances are on a
+    different scale from Gemini's, so the relevance cutoff is loosened to
+    "shares at least one content word"."""
     import rag
 
-    rag.client.delete_collection(rag.COLLECTION_NAME)
-    rag.collection = rag.client.get_or_create_collection(rag.COLLECTION_NAME)
+    monkeypatch.setattr(rag, "embed_texts", _fake_embed)
+    monkeypatch.setattr(rag, "MAX_RELEVANT_DISTANCE", 0.95)
     yield
 
 
@@ -89,11 +111,6 @@ def app(test_db, tmp_path, monkeypatch, fake_gemini):
     and Gemini replaced by a deterministic fake (no test hits the real API
     or burns quota by default — see tests/test_conversations.py for the one
     real-API smoke test, gated behind RUN_LIVE_GEMINI_TESTS).
-
-    Note: Chroma's persistent client is a module-level singleton in rag.py,
-    created on first import of `main` — its path is fixed for the whole test
-    process (see CHROMA_PATH handling in rag.py / conftest's session-scoped
-    env setup), not overridable per test.
     """
 
     import main as main_module
@@ -105,8 +122,8 @@ def app(test_db, tmp_path, monkeypatch, fake_gemini):
         finally:
             db.close()
 
-    # conversations.py looks up db.SessionLocal at call time (not via a
-    # `from db import SessionLocal` binding), specifically so this works.
+    # conversations.py and rag.py look up db.SessionLocal at call time (not
+    # via a `from db import SessionLocal` binding), specifically so this works.
     monkeypatch.setattr(db_module, "SessionLocal", test_db)
 
     main_module.app.dependency_overrides[get_db] = override_get_db
@@ -125,7 +142,7 @@ def register_and_login(client):
     """Registers a user, returns (headers, user_json)."""
 
     def _do(email="user@example.com", password="password123"):
-        client.post("/auth/register", json={"email": email, "password": password})
+        client.post("/auth/register", json={"accept_terms": True, "email": email, "password": password})
         res = client.post("/auth/login", json={"email": email, "password": password})
         token = res.json()["access_token"]
         return {"Authorization": f"Bearer {token}"}, res.json()["user"]

@@ -167,7 +167,7 @@ export default function Documents() {
           </div>
 
           {filtered.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-8">No documents match your filters.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">No documents match your filters.</p>
           ) : view === 'table' ? (
             <DocumentTable documents={filtered} collectionsById={collectionsById} onDelete={setPendingDelete} onChat={handleChat} />
           ) : (

@@ -27,7 +27,7 @@ export default function GlassDocumentCard({ document: doc, collectionName, onDel
       >
         {doc.display_name}
       </Link>
-      <p className="text-xs text-gray-400">
+      <p className="text-xs text-gray-500 dark:text-gray-400">
         {doc.file_type.toUpperCase()} · {formatSize(doc.file_size_bytes)}
         {collectionName ? ` · ${collectionName}` : ''}
       </p>

@@ -84,11 +84,10 @@ def test_cannot_scope_a_conversation_to_another_users_document(client, register_
     assert res.status_code == 404
 
 
-def test_path_traversal_filename_is_sanitized_on_disk(client, register_and_login, tmp_path):
-    import os
-
-    import config
-
+def test_path_traversal_filename_never_touches_disk(client, register_and_login):
+    # Uploaded bytes live in the database, not on disk, so a crafted name
+    # can't escape anywhere -- it must still round-trip as an inert,
+    # percent-encoded download filename.
     headers, _ = register_and_login()
     res = client.post(
         "/documents",
@@ -96,10 +95,10 @@ def test_path_traversal_filename_is_sanitized_on_disk(client, register_and_login
         files={"file": ("../../evil.txt", io.BytesIO(b"malicious content"), "text/plain")},
     )
     assert res.status_code == 201
-    # The stored file must live inside UPLOAD_DIR, never escape it via `..`.
-    for root, _, files in os.walk(config.UPLOAD_DIR):
-        for f in files:
-            assert ".." not in f
+    dl = client.get(f"/documents/{res.json()['id']}/file", headers=headers)
+    assert dl.status_code == 200
+    assert dl.content == b"malicious content"
+    assert "/" not in dl.headers["content-disposition"]
 
 
 def test_expired_or_tampered_token_rejected(client):

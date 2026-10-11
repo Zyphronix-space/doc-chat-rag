@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 import auth
 import config
+import mailer
 import rag
 from auth import create_access_token, hash_password, verify_password
 from db import get_db
@@ -13,6 +14,7 @@ from models import Document, PasswordResetToken, User
 from ratelimit import rate_limit
 from schemas import (
     ChangePasswordRequest,
+    DeleteAccountRequest,
     ForgotPasswordRequest,
     ForgotPasswordResponse,
     LoginRequest,
@@ -32,11 +34,21 @@ router = APIRouter(prefix="/auth", tags=["auth"])
     dependencies=[Depends(rate_limit("register", max_requests=10, window_seconds=60))],
 )
 def register(req: RegisterRequest, db: Session = Depends(get_db)):
+    if req.accept_terms is not True:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You must confirm you're 18 or older and accept the Terms of Service",
+        )
     existing = db.query(User).filter(User.email == req.email).first()
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email is already registered")
 
-    user = User(email=req.email, hashed_password=hash_password(req.password))
+    user = User(
+        email=req.email,
+        hashed_password=hash_password(req.password),
+        terms_version=config.TERMS_VERSION,
+        terms_accepted_at=datetime.now(timezone.utc),
+    )
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -75,29 +87,44 @@ def me(current_user: User = Depends(get_current_user)):
     dependencies=[Depends(rate_limit("forgot-password", max_requests=5, window_seconds=60))],
 )
 def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
-    """Always returns 200 with a generic message so the response shape alone
-    doesn't confirm whether the email is registered. When it is, a reset
-    link is generated -- but since this project has no mail provider
-    configured (see README), that link is returned directly in
-    demo_reset_link instead of being emailed. That's a deliberate, disclosed
-    tradeoff for a demo deployment, not something a production system should
-    do (a real deployment would email the link and never return it here)."""
-    generic = ForgotPasswordResponse(message="if that email is registered, a reset link has been generated")
+    """Returns the same response whether or not the email is registered, so
+    it can't be used to discover accounts. The reset link is emailed when
+    SMTP is configured. Only in PASSWORD_RESET_DEMO_MODE (local development)
+    is it returned in the response instead -- never on a real deployment,
+    since that would let anyone reset anyone's password."""
+    if mailer.email_configured():
+        delivery = "email"
+    elif config.PASSWORD_RESET_DEMO_MODE:
+        delivery = "demo"
+    else:
+        delivery = "unavailable"
+    ttl_minutes = int(auth.RESET_TOKEN_TTL.total_seconds() // 60)
+    response = ForgotPasswordResponse(
+        message="If that email is registered, a reset link has been sent to it."
+        if delivery != "unavailable"
+        else "Password reset by email isn't available on this deployment yet.",
+        delivery=delivery,
+        expires_in_minutes=ttl_minutes,
+    )
 
     user = db.query(User).filter(User.email == req.email).first()
-    if user is None:
-        return generic
+    if user is None or delivery == "unavailable":
+        return response
 
     token = auth.generate_reset_token()
     expires_at = datetime.now(timezone.utc) + auth.RESET_TOKEN_TTL
     db.add(PasswordResetToken(user_id=user.id, token_hash=auth.hash_token(token), expires_at=expires_at))
     db.commit()
+    link = f"{config.FRONTEND_URL}/reset-password?token={token}"
 
-    return ForgotPasswordResponse(
-        message="a reset link has been generated",
-        demo_reset_link=f"{config.FRONTEND_URL}/reset-password?token={token}",
-        expires_in_minutes=int(auth.RESET_TOKEN_TTL.total_seconds() // 60),
-    )
+    if delivery == "email":
+        try:
+            mailer.send_password_reset(user.email, link, ttl_minutes)
+        except Exception:  # noqa: BLE001 — don't reveal delivery failures per-address
+            print("password reset email failed to send")  # no address or token in logs
+    else:
+        response.demo_reset_link = link
+    return response
 
 
 @router.post("/reset-password")
@@ -141,9 +168,19 @@ def change_password(
 
 
 @router.delete("/me")
-def delete_account(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    # Chroma doesn't know about SQL cascades -- clear each document's chunks
-    # before the cascading delete removes the Document rows themselves.
+def delete_account(
+    req: DeleteAccountRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+):
+    """Permanently deletes the account and everything tied to it: documents
+    (including their stored bytes), extracted chunks and embeddings,
+    collections, conversations, messages, citations, eval cases and reset
+    tokens. Requires the current password so a stolen session token alone
+    can't destroy an account."""
+    if not verify_password(req.password, current_user.hashed_password):
+        raise HTTPException(status_code=403, detail="Password is incorrect")
+
+    # Clear chunks explicitly -- SQLite doesn't enforce the FK cascade, and
+    # the ORM cascade only covers relationships it knows about.
     doc_ids = [d.id for d in db.query(Document).filter(Document.user_id == current_user.id).all()]
     for doc_id in doc_ids:
         rag.delete_document_chunks(doc_id, current_user.id)
@@ -151,3 +188,75 @@ def delete_account(db: Session = Depends(get_db), current_user: User = Depends(g
     db.delete(current_user)
     db.commit()
     return {"message": "account deleted"}
+
+
+@router.get("/me/export")
+def export_my_data(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Everything DocMind stores about the current user, as JSON (right of
+    access / portability). Original files aren't inlined -- each document
+    lists the route to download it; the extracted text is included."""
+    from models import Chunk, Collection, Conversation, EvalCase
+
+    def iso(dt):
+        return dt.isoformat() if dt else None
+
+    chunks_by_doc: dict[int, list[dict]] = {}
+    for c in (
+        db.query(Chunk).filter(Chunk.user_id == current_user.id).order_by(Chunk.document_id, Chunk.chunk_index)
+    ):
+        chunks_by_doc.setdefault(c.document_id, []).append(
+            {"chunk_index": c.chunk_index, "page_number": c.page_number, "text": c.text}
+        )
+
+    return {
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "account": {
+            "email": current_user.email,
+            "created_at": iso(current_user.created_at),
+            "terms_version": current_user.terms_version,
+            "terms_accepted_at": iso(current_user.terms_accepted_at),
+        },
+        "documents": [
+            {
+                "id": d.id,
+                "display_name": d.display_name,
+                "original_filename": d.original_filename,
+                "file_type": d.file_type,
+                "file_size_bytes": d.file_size_bytes,
+                "status": d.status.value,
+                "collection_id": d.collection_id,
+                "uploaded_at": iso(d.uploaded_at),
+                "download_path": f"/documents/{d.id}/file",
+                "extracted_chunks": chunks_by_doc.get(d.id, []),
+            }
+            for d in db.query(Document).filter(Document.user_id == current_user.id)
+        ],
+        "collections": [
+            {"id": c.id, "name": c.name, "description": c.description, "created_at": iso(c.created_at)}
+            for c in db.query(Collection).filter(Collection.user_id == current_user.id)
+        ],
+        "conversations": [
+            {
+                "id": conv.id,
+                "title": conv.title,
+                "created_at": iso(conv.created_at),
+                "messages": [
+                    {
+                        "role": m.role.value,
+                        "content": m.content,
+                        "created_at": iso(m.created_at),
+                        "citations": [
+                            {"document_id": s.document_id, "page_number": s.page_number, "snippet": s.snippet}
+                            for s in m.sources
+                        ],
+                    }
+                    for m in conv.messages
+                ],
+            }
+            for conv in db.query(Conversation).filter(Conversation.user_id == current_user.id)
+        ],
+        "eval_cases": [
+            {"question": e.question, "expected_answer": e.expected_answer, "created_at": iso(e.created_at)}
+            for e in db.query(EvalCase).filter(EvalCase.user_id == current_user.id)
+        ],
+    }

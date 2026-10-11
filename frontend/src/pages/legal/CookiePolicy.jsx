@@ -1,39 +1,90 @@
 import LegalLayout from './LegalLayout'
+import { CATEGORIES, openCookieSettings } from '../../lib/consent'
 
 export default function CookiePolicy() {
   return (
-    <LegalLayout title="Cookie Policy">
-      <p>
-        DocMind does not use cookies, and it does not use any analytics, advertising, or tracking technology of any
-        kind. There is no cookie consent banner because there is nothing non-essential to consent to.
-      </p>
+    <LegalLayout
+      title="Cookie Policy"
+      summary={
+        <p>
+          <strong>DocMind doesn’t set any cookies.</strong> It does keep a few items in your browser’s local storage,
+          which privacy rules treat much like cookies. Only one is optional (remembering your theme), and it’s off
+          unless you allow it. There are no analytics, advertising or tracking technologies of any kind.
+        </p>
+      }
+    >
+      <h2 id="what">What DocMind stores in your browser</h2>
+      {CATEGORIES.map((c) => (
+        <div key={c.id}>
+          <h3>
+            {c.label} {c.required ? '(always on)' : '(optional, off by default)'}
+          </h3>
+          <p>{c.description}</p>
+          <div className="table-wrap" role="region" aria-label={`${c.label}: what is stored`} tabIndex={0}>
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Name</th>
+                  <th scope="col">Type</th>
+                  <th scope="col">Purpose</th>
+                  <th scope="col">How long</th>
+                </tr>
+              </thead>
+              <tbody>
+                {c.items.map((item) => (
+                  <tr key={item.key}>
+                    <td>
+                      <code>{item.key}</code>
+                    </td>
+                    <td>{item.type}</td>
+                    <td>{item.purpose}</td>
+                    <td>{item.duration}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ))}
 
-      <h2>What the app uses instead</h2>
-      <p>
-        Two pieces of information are kept in your browser's local storage, not as cookies:
-      </p>
+      <h2 id="third-parties">Third parties</h2>
       <ul>
         <li>
-          <strong>Login session token.</strong> Strictly necessary so you stay signed in between page loads. It is
-          never sent anywhere except this app's own backend, and it is removed when you log out.
+          DocMind loads no third-party scripts, analytics, advertising, social-media widgets or embedded content. Fonts
+          are served from DocMind’s own domain, not from Google Fonts.
         </li>
         <li>
-          <strong>Theme preference.</strong> Remembers whether you last used light or dark mode. Purely cosmetic and
-          never leaves your browser.
+          Our host, Vercel, doesn’t set cookies when you visit DocMind. It does see your IP address and browser details
+          for each request, as the Privacy Policy explains.
+        </li>
+        <li>
+          The DocMind API talks to Google’s Gemini service from our server, not from your browser, so Google sets
+          nothing in your browser through DocMind.
         </li>
       </ul>
 
-      <h2>Third parties</h2>
+      <h2 id="manage">Changing your choice</h2>
       <p>
-        The only outbound network call made on your behalf is to Google's Gemini API to generate chat answers, as
-        described in the <a href="/privacy-policy">Privacy Policy</a>. That call does not set cookies in your
-        browser.
+        You can change or withdraw your choice at any time. Turning “Preferences” off deletes the stored theme straight
+        away.
+      </p>
+      <p>
+        <button
+          type="button"
+          onClick={openCookieSettings}
+          className="rounded-full border border-gray-400 px-4 py-2 font-medium hover:bg-gray-50 dark:hover:bg-gray-800"
+        >
+          Open cookie settings
+        </button>
+      </p>
+      <p>
+        You can also clear site data in your browser settings. That logs you out and resets your cookie choice, so
+        you’ll be asked again.
       </p>
 
-      <h2>Changes</h2>
-      <p>
-        If non-essential cookies, analytics, or tracking are ever added to this project, this page will be updated
-        first, and a consent mechanism will be added before anything non-essential starts running.
+      <p className="legal-note">
+        If DocMind ever adds an optional technology (such as analytics), it will be listed here and stay off until you
+        agree to it.
       </p>
     </LegalLayout>
   )

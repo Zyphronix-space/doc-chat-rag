@@ -10,6 +10,7 @@ export default function Signup() {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [acceptTerms, setAcceptTerms] = useState(false)
   const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -18,7 +19,7 @@ export default function Signup() {
     setError(null)
     setSubmitting(true)
     try {
-      await register(email, password)
+      await register(email, password, acceptTerms)
       navigate('/dashboard', { replace: true })
     } catch (err) {
       setError(err.message)
@@ -59,7 +60,27 @@ export default function Signup() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+          <label htmlFor="register-terms" className="flex items-start gap-2 text-sm text-gray-800 dark:text-gray-200">
+            <input
+              id="register-terms"
+              type="checkbox"
+              required
+              checked={acceptTerms}
+              onChange={(e) => setAcceptTerms(e.target.checked)}
+              className="mt-1 h-4 w-4"
+            />
+            <span>
+              I’m 18 or older and I agree to the{' '}
+              <Link to="/terms" className="underline">Terms of Service</Link>. I’ve read the{' '}
+              <Link to="/privacy" className="underline">Privacy Policy</Link>, including that document text is processed
+              by Google’s free Gemini API.
+            </span>
+          </label>
+          {error && (
+            <p role="alert" className="text-sm text-red-700 dark:text-red-300">
+              {error}
+            </p>
+          )}
           <GlassButton type="submit" disabled={submitting} className="w-full">
             {submitting ? 'Creating account…' : 'Create account'}
           </GlassButton>
@@ -70,13 +91,13 @@ export default function Signup() {
             Log in
           </Link>
         </p>
-        <p className="text-xs text-gray-400 mt-3 text-center">
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 text-center">
           By creating an account you agree to the{' '}
           <Link to="/terms" className="underline hover:text-accent-600 dark:hover:text-accent-400">
             Terms
           </Link>{' '}
           and{' '}
-          <Link to="/privacy-policy" className="underline hover:text-accent-600 dark:hover:text-accent-400">
+          <Link to="/privacy" className="underline hover:text-accent-600 dark:hover:text-accent-400">
             Privacy Policy
           </Link>
           .

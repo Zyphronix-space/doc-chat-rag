@@ -5,7 +5,7 @@ export default function StatCard({ label, value, sub, accent }) {
       <p className={`text-2xl font-semibold mt-1 ${accent ? 'text-accent-600 dark:text-accent-400' : 'text-gray-900 dark:text-gray-100'}`}>
         {value}
       </p>
-      {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+      {sub && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{sub}</p>}
     </div>
   )
 }

@@ -60,7 +60,7 @@ export default function ScopePicker({ open, onClose, onCreate }) {
         <div className="flex-1 overflow-y-auto">
           {mode === 'documents' ? (
             documents.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-6">No ready documents yet. Upload one first.</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-6">No ready documents yet. Upload one first.</p>
             ) : (
               <ul className="space-y-1">
                 {documents.map((d) => (
@@ -74,7 +74,7 @@ export default function ScopePicker({ open, onClose, onCreate }) {
               </ul>
             )
           ) : collections.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-6">No collections yet.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-6">No collections yet.</p>
           ) : (
             <ul className="space-y-1">
               {collections.map((c) => (
@@ -87,8 +87,8 @@ export default function ScopePicker({ open, onClose, onCreate }) {
                       onChange={() => setSelectedCollectionId(c.id)}
                     />
                     <span className="truncate flex items-center gap-1.5">
-                      <Icon name="folder" size={14} className="shrink-0 text-gray-400" />
-                      {c.name} <span className="text-gray-400">({c.document_count})</span>
+                      <Icon name="folder" size={14} className="shrink-0 text-gray-500 dark:text-gray-400" />
+                      {c.name} <span className="text-gray-500 dark:text-gray-400">({c.document_count})</span>
                     </span>
                   </label>
                 </li>

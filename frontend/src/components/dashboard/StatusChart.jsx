@@ -14,7 +14,7 @@ export default function StatusChart({ ready, failed, other }) {
   ].filter((s) => s.value > 0)
 
   if (segments.length === 0) {
-    return <p className="text-sm text-gray-400">No documents yet.</p>
+    return <p className="text-sm text-gray-500 dark:text-gray-400">No documents yet.</p>
   }
 
   return (

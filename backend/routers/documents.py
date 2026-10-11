@@ -1,10 +1,8 @@
-import os
+from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from fastapi.responses import FileResponse
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
+from sqlalchemy.orm import Session, undefer
 
-import config
 import rag
 from db import get_db
 from deps import get_current_user, not_found
@@ -21,12 +19,6 @@ from models import Document, DocumentStatus, User
 from schemas import DocumentOut, DocumentUpdate, SemanticSearchResult
 
 router = APIRouter(prefix="/documents", tags=["documents"])
-
-
-def _user_upload_dir(user_id: int) -> str:
-    path = os.path.join(config.UPLOAD_DIR, str(user_id))
-    os.makedirs(path, exist_ok=True)
-    return path
 
 
 def _get_owned_document(db: Session, document_id: int, user: User) -> Document:
@@ -91,16 +83,10 @@ async def upload_document(
     db.commit()
     db.refresh(doc)
 
-    stored_name = f"{doc.id}_{safe_filename(file.filename)}"
-    file_path = os.path.join(_user_upload_dir(current_user.id), stored_name)
-
     try:
         doc.status = DocumentStatus.processing
+        doc.file_data = file_bytes
         db.commit()
-
-        with open(file_path, "wb") as f:
-            f.write(file_bytes)
-        doc.file_path = file_path
 
         pages = extract_pages(ext, file_bytes)
         chunk_count = rag.ingest_document(
@@ -121,7 +107,7 @@ async def upload_document(
     except ExtractionError as exc:
         doc.status = DocumentStatus.failed
         doc.status_error = str(exc)
-    except Exception as exc:  # noqa: BLE001 — any embedding/Chroma failure must not crash the request
+    except Exception as exc:  # noqa: BLE001 — any embedding/DB failure must not crash the request
         doc.status = DocumentStatus.failed
         doc.status_error = f"Processing failed: {exc}"
 
@@ -194,10 +180,22 @@ def open_document_file(document_id: int, db: Session = Depends(get_db), current_
     """Serves the original uploaded bytes — the "Open" action on the
     document detail page. Ownership-gated like every other document route,
     unlike a static file server which would leak files by URL alone."""
-    doc = _get_owned_document(db, document_id, current_user)
-    if not doc.file_path or not os.path.exists(doc.file_path):
+    doc = (
+        db.query(Document)
+        .options(undefer(Document.file_data))
+        .filter(Document.id == document_id, Document.user_id == current_user.id)
+        .first()
+    )
+    if doc is None:
+        raise not_found("Document")
+    if not doc.file_data:
         raise not_found("Document file")
-    return FileResponse(doc.file_path, filename=doc.original_filename)
+    media_type = {"pdf": "application/pdf", "md": "text/markdown"}.get(doc.file_type, "text/plain")
+    return Response(
+        content=doc.file_data,
+        media_type=media_type,
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(safe_filename(doc.original_filename), safe='')}"},
+    )
 
 
 @router.patch("/{document_id}", response_model=DocumentOut)
@@ -222,8 +220,6 @@ def update_document(
             if coll is None or coll.user_id != current_user.id:
                 raise not_found("Collection")
         doc.collection_id = new_collection_id
-        if doc.status == DocumentStatus.ready:
-            rag.update_document_collection(doc.id, current_user.id, new_collection_id)
 
     db.commit()
     db.refresh(doc)
@@ -235,8 +231,6 @@ def delete_document(document_id: int, db: Session = Depends(get_db), current_use
     doc = _get_owned_document(db, document_id, current_user)
 
     rag.delete_document_chunks(doc.id, current_user.id)
-    if doc.file_path and os.path.exists(doc.file_path):
-        os.remove(doc.file_path)
 
     db.delete(doc)
     db.commit()

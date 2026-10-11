@@ -106,7 +106,7 @@ export default function Conversations() {
         <>
           <GlassSearchInput placeholder="Search conversations…" value={q} onChange={(e) => setQ(e.target.value)} />
           {filtered.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-8">No conversations match "{q}".</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">No conversations match "{q}".</p>
           ) : (
             <div className="space-y-2">
               {filtered.map((c) => (
@@ -129,13 +129,13 @@ export default function Conversations() {
                         {c.title}
                       </Link>
                     )}
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                       {c.scope_type === 'collection' ? 'Collection scope' : `${c.scope_document_ids.length} document(s)`} ·
                       updated {formatTime(c.updated_at)}
                     </p>
                   </div>
                   <div className="flex items-center gap-3 shrink-0 text-xs">
-                    <button onClick={() => startRename(c)} className="text-gray-400 hover:text-accent-600">
+                    <button onClick={() => startRename(c)} className="text-gray-500 dark:text-gray-400 hover:text-accent-600">
                       Rename
                     </button>
                     <button onClick={() => setPendingDelete(c)} className="text-red-500 hover:underline">

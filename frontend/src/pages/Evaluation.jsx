@@ -132,7 +132,7 @@ export default function Evaluation() {
                     </button>
                   </div>
                   {c.expected_source_document_id && (
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       expects: {docsById[c.expected_source_document_id]?.display_name || `document #${c.expected_source_document_id}`}
                     </p>
                   )}
@@ -146,7 +146,7 @@ export default function Evaluation() {
                       {result.faithfulness_score !== null && result.faithfulness_score !== undefined && (
                         <p className="text-xs text-gray-500">
                           Faithfulness: {result.faithfulness_score.toFixed(2)}{' '}
-                          <span className="text-gray-400">({result.faithfulness_method})</span>
+                          <span className="text-gray-500 dark:text-gray-400">({result.faithfulness_method})</span>
                         </p>
                       )}
                       <p className="text-xs text-gray-500 italic">"{result.answer}"</p>

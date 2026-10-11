@@ -28,7 +28,7 @@ export default function DocumentTable({ documents, collectionsById, onDelete, on
                 <Link to={`/documents/${d.id}`} className="font-medium text-gray-800 dark:text-gray-100 hover:text-accent-600 dark:hover:text-accent-400">
                   {d.display_name}
                 </Link>
-                <div className="text-xs text-gray-400">{d.file_type.toUpperCase()} · {formatSize(d.file_size_bytes)}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">{d.file_type.toUpperCase()} · {formatSize(d.file_size_bytes)}</div>
               </td>
               <td className="px-4 py-2.5">
                 <StatusBadge status={d.status} />

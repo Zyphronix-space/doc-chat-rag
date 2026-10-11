@@ -1,6 +1,7 @@
 import { apiFetch } from './client'
 
-export const register = (email, password) => apiFetch('/auth/register', { method: 'POST', json: { email, password } })
+export const register = (email, password, acceptTerms) =>
+  apiFetch('/auth/register', { method: 'POST', json: { email, password, accept_terms: acceptTerms } })
 
 export const login = (email, password) => apiFetch('/auth/login', { method: 'POST', json: { email, password } })
 
@@ -19,4 +20,7 @@ export const changePassword = (currentPassword, newPassword) =>
     json: { current_password: currentPassword, new_password: newPassword },
   })
 
-export const deleteAccount = () => apiFetch('/auth/me', { method: 'DELETE' })
+// The backend requires the current password, so a stolen token alone can't delete the account.
+export const deleteAccount = (password) => apiFetch('/auth/me', { method: 'DELETE', json: { password } })
+
+export const exportMyData = () => apiFetch('/auth/me/export')

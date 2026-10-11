@@ -84,7 +84,7 @@ export default function CollectionDetail() {
           <>
             <div className="flex items-start justify-between">
               <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                <Icon name="folder" size={18} className="shrink-0 text-gray-400" />
+                <Icon name="folder" size={18} className="shrink-0 text-gray-500 dark:text-gray-400" />
                 {collection.name}
               </h1>
               <div className="flex gap-2">

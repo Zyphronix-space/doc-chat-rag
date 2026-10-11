@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "@fontsource/instrument-serif/latin-400.css";
+@import "@fontsource/instrument-serif/latin-400-italic.css";
 
 /* Manual dark-mode toggle: add/remove the `dark` class on <html>. Defaults
    to system preference on first load (see ThemeContext), then a user
@@ -29,6 +31,7 @@
 
   --font-sans: system-ui, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, Consolas, monospace;
+  --font-display: "Instrument Serif", ui-serif, Georgia, serif;
 }
 
 /* Glass surface tokens, layered on top of Tailwind's utility classes rather
@@ -166,10 +169,30 @@ input:-webkit-autofill:focus {
   font-family: var(--font-mono);
 }
 .legal-content h2 {
-  font-size: 1rem;
+  font-size: 1.25rem;
   font-weight: 600;
-  margin-top: 1.5em;
+  margin-top: 2em;
   color: inherit;
+  scroll-margin-top: 5rem;
+}
+.legal-content h3 {
+  font-weight: 600;
+  margin-top: 1.2em;
+}
+.legal-content table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.legal-content th,
+.legal-content td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--glass-border);
+}
+.legal-content .table-wrap {
+  overflow-x: auto;
 }
 .legal-content ul {
   list-style: disc;
@@ -181,7 +204,7 @@ input:-webkit-autofill:focus {
 }
 .legal-note {
   font-size: 0.75rem;
-  color: #9ca3af; /* gray-400 */
+  color: #4b5563; /* gray-600: 7:1 on white (gray-400 was ~2.5:1) */
   border-top: 1px solid currentColor;
   padding-top: 1em;
   margin-top: 2em !important;
@@ -190,4 +213,170 @@ input:-webkit-autofill:focus {
 .markdown-body ol {
   margin: 0.4em 0;
   padding-left: 1.4em;
+}
+
+:root.dark .legal-note {
+  color: #d1d5db; /* gray-300 */
+}
+:root.dark .legal-content a {
+  color: var(--color-accent-300);
+}
+
+/* ---------- Accessibility primitives ---------- */
+
+.skip-link {
+  position: absolute;
+  left: 0.75rem;
+  top: -4rem;
+  z-index: 100;
+  padding: 0.6rem 1rem;
+  border-radius: 9999px;
+  background: var(--color-accent-700);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+.skip-link:focus {
+  top: 0.75rem;
+}
+
+/* One consistent, high-contrast focus ring for every interactive element
+   (3:1+ against both themes' backgrounds). */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-accent-600);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+:root.dark :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline-color: var(--color-accent-300);
+}
+/* Programmatic focus targets (sections, <main>) don't need a ring. */
+:where(section, main, h1, h2)[tabindex="-1"]:focus {
+  outline: none;
+}
+
+/* Anchored sections clear the sticky header. */
+section[id] {
+  scroll-margin-top: 5rem;
+}
+
+/* ---------- Public marketing pages ---------- */
+
+.font-display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.hero-bg {
+  background:
+    radial-gradient(900px 480px at 50% -8%, rgba(47, 111, 237, 0.16), transparent 65%),
+    radial-gradient(600px 360px at 85% 20%, rgba(34, 211, 238, 0.1), transparent 60%);
+}
+:root.dark .hero-bg {
+  background:
+    radial-gradient(900px 480px at 50% -8%, rgba(47, 111, 237, 0.26), transparent 65%),
+    radial-gradient(600px 360px at 85% 20%, rgba(34, 211, 238, 0.1), transparent 60%);
+}
+
+/* Faint ruled-paper texture behind the hero: the "document" motif. */
+.ruled {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 31px,
+    rgba(47, 111, 237, 0.07) 31px,
+    rgba(47, 111, 237, 0.07) 32px
+  );
+  mask-image: radial-gradient(ellipse at 50% 0%, #000 30%, transparent 75%);
+}
+
+.demo-frame {
+  margin: 0;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  background: var(--glass-bg-raised);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    0 1px 1px rgba(20, 30, 55, 0.04),
+    0 30px 80px -30px rgba(28, 68, 168, 0.35);
+}
+@supports (backdrop-filter: blur(1px)) {
+  .demo-frame {
+    backdrop-filter: var(--glass-blur);
+  }
+}
+
+.excerpt {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: #374151;
+  border-left: 3px solid var(--color-accent-500);
+  padding-left: 0.85rem;
+}
+:root.dark .excerpt {
+  color: #e5e7eb;
+}
+.excerpt mark {
+  background: linear-gradient(transparent 55%, rgba(250, 204, 21, 0.55) 55%);
+  color: inherit;
+  padding: 0 0.1em;
+}
+:root.dark .excerpt mark {
+  background: linear-gradient(transparent 55%, rgba(250, 204, 21, 0.35) 55%);
+}
+
+.spotlight-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+.spotlight-card__light {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  background: radial-gradient(
+    260px circle at var(--spot-x, 50%) var(--spot-y, 50%),
+    rgba(47, 111, 237, 0.14),
+    transparent 70%
+  );
+}
+.spotlight-card:hover .spotlight-card__light,
+.spotlight-card:focus-within .spotlight-card__light {
+  opacity: 1;
+}
+:root.dark .spotlight-card__light {
+  background: radial-gradient(
+    260px circle at var(--spot-x, 50%) var(--spot-y, 50%),
+    rgba(88, 151, 246, 0.2),
+    transparent 70%
+  );
+}
+
+.faq details > summary {
+  list-style: none;
+}
+.faq details > summary::-webkit-details-marker {
+  display: none;
+}
+.faq details[open] .faq-icon {
+  transform: rotate(45deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

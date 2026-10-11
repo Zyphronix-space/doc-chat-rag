@@ -1,18 +1,18 @@
 def test_register_creates_user(client):
-    res = client.post("/auth/register", json={"email": "a@example.com", "password": "password123"})
+    res = client.post("/auth/register", json={"accept_terms": True, "email": "a@example.com", "password": "password123"})
     assert res.status_code == 201
     assert res.json()["email"] == "a@example.com"
     assert "hashed_password" not in res.json()
 
 
 def test_register_duplicate_email_conflicts(client):
-    client.post("/auth/register", json={"email": "a@example.com", "password": "password123"})
-    res = client.post("/auth/register", json={"email": "a@example.com", "password": "other12345"})
+    client.post("/auth/register", json={"accept_terms": True, "email": "a@example.com", "password": "password123"})
+    res = client.post("/auth/register", json={"accept_terms": True, "email": "a@example.com", "password": "other12345"})
     assert res.status_code == 409
 
 
 def test_login_success_returns_token(client):
-    client.post("/auth/register", json={"email": "a@example.com", "password": "password123"})
+    client.post("/auth/register", json={"accept_terms": True, "email": "a@example.com", "password": "password123"})
     res = client.post("/auth/login", json={"email": "a@example.com", "password": "password123"})
     assert res.status_code == 200
     body = res.json()
@@ -22,7 +22,7 @@ def test_login_success_returns_token(client):
 
 
 def test_login_wrong_password_rejected(client):
-    client.post("/auth/register", json={"email": "a@example.com", "password": "password123"})
+    client.post("/auth/register", json={"accept_terms": True, "email": "a@example.com", "password": "password123"})
     res = client.post("/auth/login", json={"email": "a@example.com", "password": "wrongpass"})
     assert res.status_code == 401
 

@@ -14,6 +14,13 @@ from models import DocumentStatus, MessageRole, ScopeType
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=200)
+    # Must be an explicit true: the user ticked "I'm 18 or older and agree to
+    # the Terms of Service". Validated server-side, not just in the form.
+    accept_terms: bool = False
+
+
+class DeleteAccountRequest(BaseModel):
+    password: str = Field(min_length=1, max_length=200)
 
 
 class LoginRequest(BaseModel):
@@ -25,6 +32,8 @@ class UserOut(BaseModel):
     id: int
     email: str
     created_at: datetime
+    terms_version: str | None = None
+    terms_accepted_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 
@@ -41,6 +50,10 @@ class ForgotPasswordRequest(BaseModel):
 
 class ForgotPasswordResponse(BaseModel):
     message: str
+    # How reset links are delivered on this deployment: "email", "demo" (local
+    # dev only), or "unavailable". A per-deployment constant, so it reveals
+    # nothing about whether the submitted email is registered.
+    delivery: str
     demo_reset_link: str | None = None
     expires_in_minutes: int | None = None
 

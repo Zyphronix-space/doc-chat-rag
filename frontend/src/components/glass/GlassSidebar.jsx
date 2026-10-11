@@ -40,7 +40,7 @@ export default function GlassSidebar() {
           </NavLink>
         ))}
       </nav>
-      <div className="px-4 py-3 text-xs text-gray-400 border-t border-black/[0.06] dark:border-white/[0.06]">
+      <div className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400 border-t border-black/[0.06] dark:border-white/[0.06]">
         AI Document Intelligence Workspace
       </div>
     </aside>

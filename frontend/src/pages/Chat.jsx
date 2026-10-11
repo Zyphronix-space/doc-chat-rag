@@ -175,14 +175,14 @@ export default function Chat() {
       >
         <button
           onClick={() => setMobileScopeOpen(false)}
-          className="md:hidden self-end p-2 text-gray-400 hover:text-gray-600"
+          className="md:hidden self-end p-2 text-gray-500 dark:text-gray-400 hover:text-gray-600"
           aria-label="Close"
         >
           <Icon name="close" />
         </button>
         {conversation && (
           <div className="p-3 border-b border-black/[0.06] dark:border-white/[0.06]">
-            <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-1.5">
+            <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
               {conversation.scope_type === 'collection' ? 'Collection scope' : 'Sources'}
             </p>
             {conversation.scope_type === 'collection' ? (
@@ -213,14 +213,14 @@ export default function Chat() {
               <div className="flex items-center gap-2 min-w-0">
                 <button
                   onClick={() => setMobileScopeOpen(true)}
-                  className="md:hidden text-gray-400 hover:text-gray-600 shrink-0"
+                  className="md:hidden text-gray-500 dark:text-gray-400 hover:text-gray-600 shrink-0"
                   aria-label="Show conversations and sources"
                 >
                   <Icon name="menu" />
                 </button>
                 <div className="min-w-0">
                   <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{conversation.title}</h1>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
                     {conversation.scope_type === 'collection'
                       ? 'Searching a collection'
                       : `Searching ${conversation.scope_document_ids.length} document${conversation.scope_document_ids.length === 1 ? '' : 's'}`}
@@ -230,11 +230,11 @@ export default function Chat() {
               <div className="flex items-center gap-3 shrink-0">
                 <button
                   onClick={() => setSourcesPanelOpen((v) => !v)}
-                  className="hidden lg:inline text-xs text-gray-400 hover:text-accent-600"
+                  className="hidden lg:inline text-xs text-gray-500 dark:text-gray-400 hover:text-accent-600"
                 >
                   {sourcesPanelOpen ? 'Hide sources panel' : 'Show sources panel'}
                 </button>
-                <button onClick={() => setConfirmClear(true)} className="text-xs text-gray-400 hover:text-red-500">
+                <button onClick={() => setConfirmClear(true)} className="text-xs text-gray-500 dark:text-gray-400 hover:text-red-500">
                   Clear conversation
                 </button>
               </div>
@@ -242,7 +242,7 @@ export default function Chat() {
 
             <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
               {messages.length === 0 && (
-                <p className="text-sm text-gray-400 text-center py-8">
+                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
                   Ask anything about the documents in scope, or just say hi.
                 </p>
               )}
@@ -281,9 +281,9 @@ export default function Chat() {
 
       {sourcesPanelOpen && (
         <aside className="hidden lg:flex w-72 shrink-0 border-l border-black/[0.06] dark:border-white/[0.06] flex-col overflow-y-auto p-3 gap-2">
-          <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide px-1">Sources for this answer</p>
+          <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide px-1">Sources for this answer</p>
           {!lastAssistantWithCitations ? (
-            <p className="text-sm text-gray-400 px-1 py-4">No citations yet. Ask a question to see sources here.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 px-1 py-4">No citations yet. Ask a question to see sources here.</p>
           ) : (
             lastAssistantWithCitations.citations.map((c, idx) => (
               <Citation key={`${c.document_id}-${c.chunk_id}`} citation={c} index={idx} />

@@ -1,0 +1,9 @@
+.env
+app.db
+chroma_db/
+uploads/
+tests/
+.pytest_cache/
+__pycache__/
+requirements-dev.txt
+.env.local

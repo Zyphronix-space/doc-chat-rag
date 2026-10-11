@@ -3,15 +3,15 @@
 <p align="center">
 <img src="https://img.shields.io/badge/-Python-0d0d16?style=flat-square&logo=python&logoColor=white" alt="Python" />
 <img src="https://img.shields.io/badge/-FastAPI-0d0d16?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI" />
-<img src="https://img.shields.io/badge/-ChromaDB-6C5CE7?style=flat-square" alt="ChromaDB" />
+<img src="https://img.shields.io/badge/-TiDB%20Vector-6C5CE7?style=flat-square" alt="TiDB" />
 <img src="https://img.shields.io/badge/-Gemini%20API-0d0d16?style=flat-square&logo=googlegemini&logoColor=white" alt="Gemini" />
 <img src="https://img.shields.io/badge/-React-0d0d16?style=flat-square&logo=react&logoColor=white" alt="React" />
 </p>
 
 # DocMind — AI Document Intelligence Workspace
 
-**Live demo:** https://polite-coast-06d46f000.6.azurestaticapps.net
-(backend API: https://docintel-api-stephan.azurewebsites.net/health)
+**Live demo:** https://docmind-kohl-pi.vercel.app
+(backend API: https://docmind-api-kappa.vercel.app/health)
 
 A multi-user AI knowledge workspace: upload documents, organize them into
 collections, and chat against one document, several, or a whole collection —
@@ -22,8 +22,8 @@ demo (`chat-with-your-documents`); this is the full-stack, production-shaped
 version: JWT auth (including password reset), a relational data model,
 per-user document CRUD, collections, persisted conversations, page-accurate
 citations, a command palette, real usage analytics, and a small honest RAG
-evaluation framework — all on top of the same TF-IDF-free, sentence-embedding
-+ Chroma retrieval pipeline the project started with.
+evaluation framework — all on top of an embedding retrieval pipeline that runs
+entirely inside TiDB Cloud (native vector search).
 
 ## Product flow
 
@@ -51,7 +51,7 @@ backend/               FastAPI service
   ratelimit.py           hand-rolled in-memory per-IP rate limiter
   deps.py                current-user dependency, ownership-check helper, injectable Gemini client
   ingestion.py           file validation + per-page text extraction (page numbers survive here)
-  rag.py                 Chroma ingestion/retrieval, scoped by user_id/document_id/collection_id
+  rag.py                 chunking, Gemini embeddings, vector retrieval in TiDB, scoped by user_id/document_id
   chat_logic.py          Gemini prompting + streaming (shared by /conversations/{id}/messages);
                          distinguishes "no documents in scope" (casual chat) from "documents in
                          scope but nothing relevant retrieved" (must refuse, not free-answer)
@@ -73,9 +73,12 @@ frontend/               React 19 + Vite + React Router + Tailwind CSS v4
                           tabs), Settings, NotFound
 ```
 
-**Data model.** Chroma remains the only vector store — nothing in the
-relational DB stores embeddings. SQLite (via SQLAlchemy) holds ownership
-and structure: `Document.collection_id` is a nullable one-to-one FK (a
+**Data model.** One database holds everything. In production that's TiDB
+Cloud (MySQL-compatible, free tier): relational rows, the original uploaded
+bytes (`documents.file_data`), and chunk embeddings in a native
+`VECTOR(768)` column (`chunks.embedding`). Locally and in tests it's SQLite,
+with vectors stored as JSON and cosine distance computed in Python. The
+structure: `Document.collection_id` is a nullable one-to-one FK (a
 document lives in at most one collection, matching the "folder" metaphor —
 `University/{Database.pdf, DSA.pdf, Networks.pdf}`). `Conversation` records
 its retrieval scope as either a `collection_id` or a many-to-many set of
@@ -95,12 +98,12 @@ flowchart LR
         U["Upload"] --> V["Validate<br/>type / size / hash"]
         V --> X["Extract text<br/>per PDF page"]
         X --> C["Chunk per page<br/>(800 chars, 150 overlap)"]
-        C --> EMB1["Embed<br/>(sentence-transformers, local)"]
-        EMB1 --> CH[("Chroma<br/>tagged: user_id, document_id,<br/>page_number?, collection_id?")]
+        C --> EMB1["Embed<br/>(Gemini gemini-embedding-001, 768-d)"]
+        EMB1 --> CH[("TiDB chunks table<br/>VECTOR(768) + user_id, document_id,<br/>page_number?")]
     end
     subgraph "Question time"
         Q["Question"] --> EMB2["Embed query"]
-        EMB2 --> SIM["Similarity search<br/>scoped to user + selection"]
+        EMB2 --> SIM["VEC_COSINE_DISTANCE search<br/>scoped to user + selection"]
         CH --> SIM
         SIM --> G{"Relevant chunks<br/>found?"}
         G -- yes --> GEN["Gemini<br/>answer strictly from excerpts"]
@@ -116,17 +119,17 @@ flowchart LR
 run **per PDF page**, not on the whole document joined into one string. This
 is what makes real page numbers possible: `ingestion.py:extract_pages()`
 returns `[(page_number, text), ...]` per page via pdfplumber, and each
-page's chunks carry that page number into Chroma metadata. TXT/MD files
+page's chunks carry that page number into their `chunks` row. TXT/MD files
 have no concept of a page — their citations simply omit `page_number`
 rather than fabricating one.
 
-**Retrieval scoping.** Every Chroma query always filters on `user_id` first
+**Retrieval scoping.** Every vector query always filters on `user_id` first
 (defense-in-depth alongside the relational ownership checks — a chunk query
 can never cross users even if an authorization check elsewhere had a bug).
-A conversation scoped to specific documents filters on `document_id $in
-[...]`; a conversation scoped to a collection resolves the collection's
-*current* ready-document membership via SQL first, then queries Chroma with
-that document-id list — so removing a document from a collection
+A conversation scoped to specific documents filters on `document_id IN
+(...)`; a conversation scoped to a collection resolves the collection's
+*current* ready-document membership via SQL first, then runs the vector
+query with that document-id list — so removing a document from a collection
 immediately stops it being searched.
 
 **Grounding, precisely.** The system prompt (`chat_logic.py`) distinguishes
@@ -154,7 +157,8 @@ a snippet — the same retrieval path chat uses, exposed as a standalone
 | Table | Key columns |
 |---|---|
 | `users` | email (unique), hashed_password, is_active |
-| `documents` | user_id, collection_id?, display_name, content_hash (unique per user), status (pending/processing/ready/failed), status_error, page_count?, chunk_count |
+| `documents` | user_id, collection_id?, display_name, content_hash (unique per user), file_data (original bytes), status (pending/processing/ready/failed), status_error, page_count?, chunk_count |
+| `chunks` | user_id, document_id, chunk_index, page_number?, text, embedding (`VECTOR(768)` on TiDB) |
 | `collections` | user_id, name, description? |
 | `conversations` | user_id, scope_type (document_set/collection), scope_collection_id? |
 | `conversation_documents` | conversation_id, document_id (association table) |
@@ -179,21 +183,22 @@ request can't even confirm the resource exists. `login`, `register`, and
 
 | Method & path | Purpose |
 |---|---|
-| `POST /auth/register` | Create an account |
+| `POST /auth/register` | Create an account. `accept_terms: true` is required; the accepted `TERMS_VERSION` and time are recorded |
 | `POST /auth/login` | Get a JWT |
 | `POST /auth/logout` | No-op server-side (stateless JWT) — client discards the token |
 | `GET /auth/me` | Current user |
 | `POST /auth/forgot-password` | `{email}` → generates a reset token if the email exists; see Password reset below |
 | `POST /auth/reset-password` | `{token, new_password}` → consumes the token, sets the new password |
 | `PATCH /auth/change-password` | `{current_password, new_password}` |
-| `DELETE /auth/me` | Delete own account (cascades documents/collections/conversations + their Chroma chunks) |
+| `DELETE /auth/me` | `{password}` → delete own account (cascades documents/collections/conversations + their chunks). The password is required so a stolen token alone can't destroy an account |
+| `GET /auth/me/export` | Everything stored about the current user as JSON (right of access / portability) |
 | `POST /documents` | Upload (multipart `file`, optional `?collection_id=`) — dedup-aware |
 | `GET /documents` | List (`?collection_id=&status_filter=&q=` — `q` filters by filename) |
 | `GET /documents/semantic-search` | `?q=&limit=` — searches document *content*, grouped by document |
 | `GET /documents/{id}` | Detail |
 | `GET /documents/{id}/file` | Download the original file |
 | `PATCH /documents/{id}` | Rename / move (`display_name?`, `collection_id?`) |
-| `DELETE /documents/{id}` | Deletes DB row + Chroma chunks + file on disk |
+| `DELETE /documents/{id}` | Deletes the document, its stored bytes, and its chunks |
 | `POST /collections` | Create |
 | `GET /collections` | List (with document_count) |
 | `GET /collections/{id}` | Detail + documents |
@@ -217,24 +222,28 @@ request can't even confirm the resource exists. `login`, `register`, and
 
 ## Password reset
 
-There is **no email provider configured anywhere in this project** — no
-SMTP, SendGrid, Resend, or similar. Rather than fake it, the reset flow is
-real end to end (a hashed, single-use, 30-minute-expiring token, generated
-with `secrets.token_urlsafe`), but the Forgot Password page honestly
-displays the generated link directly, in a clearly labeled "DEMO MODE"
-banner, instead of pretending an email was sent. This is a deliberate,
-disclosed tradeoff for a demo deployment — the same "explained rather than
-hidden" approach this project already takes with plaintext message
-storage and the evaluation framework's honesty about what it measures. A
-production deployment would wire `POST /auth/forgot-password` to a real
-mail provider and stop returning `demo_reset_link` in the response.
+The flow is a hashed, single-use token that expires after 30 minutes and is
+generated with `secrets.token_urlsafe`. How the link reaches the user
+depends on the deployment, and `POST /auth/forgot-password` reports it as
+`delivery`:
+
+- **`email`**: `SMTP_*` is set, so `backend/mailer.py` emails the link.
+- **`unavailable`**: no SMTP (current production). Nothing is sent, and the
+  Forgot Password page points to /contact.
+- **`demo`**: local development only, when `PASSWORD_RESET_DEMO_MODE=true`.
+  The link comes back in the response and shows in a labelled banner.
+
+The response is identical for registered and unregistered emails, so the
+endpoint can't be used to find out who has an account. (An earlier version
+returned the link to anyone, which allowed account takeover. That was
+fixed and deployed on 11 October 2026.)
 
 ## Setup
 
 **Backend:**
 ```
 cd backend
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 cp .env.example .env   # add your GEMINI_API_KEY (free at aistudio.google.com/apikey)
 uvicorn main:app --reload
 ```
@@ -255,12 +264,17 @@ npm run dev
 | `GEMINI_MODEL` | `gemini-3.5-flash-lite` | the `-lite` tier has a much higher free-tier daily quota |
 | `JWT_SECRET` | random, generated at startup | **set this in production** — without it, all tokens are invalidated on every restart (a clear startup warning is printed either way) |
 | `JWT_EXPIRE_MINUTES` | `120` | |
-| `DATABASE_URL` | `sqlite:///./app.db` | single-file, zero-config |
-| `UPLOAD_DIR` | `uploads` | raw uploaded files, per-user subfolders |
-| `CHROMA_PATH` | `chroma_db` | persistent vector store |
-| `MAX_FILE_SIZE_MB` | `20` | |
+| `DATABASE_URL` | `sqlite:///./app.db` | production: `mysql+pymysql://USER:PASS@HOST:4000/docmind` (TiDB Cloud; TLS is automatic) |
+| `EMBEDDING_MODEL` | `gemini-embedding-001` | |
+| `EMBEDDING_DIM` | `768` | must match the `chunks.embedding` column — changing it means re-ingesting |
+| `MAX_RELEVANT_DISTANCE` | `0.40` | cosine-distance cutoff, calibrated on Gemini embeddings (relevant ≈0.22–0.27, greetings ≈0.41, off-topic ≥0.46) |
+| `MAX_FILE_SIZE_MB` | `20` | set to `4` on Vercel — its request-body limit is 4.5 MB |
 | `CORS_ORIGINS` | `http://localhost:5173` | comma-separated |
 | `FRONTEND_URL` | `http://localhost:5173` | used only to build the password-reset link (see above) |
+| `TERMS_VERSION` | `2026-10-11` | recorded against each signup; bump together with `POLICY.termsVersion` in `frontend/src/config/site.js` |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | unset (port `587`) | enables password-reset email; unset = `delivery: "unavailable"` |
+| `PASSWORD_RESET_DEMO_MODE` | unset | `true` returns the reset link in the response — **local development only, never in production** |
+| `VITE_MAX_UPLOAD_MB` (frontend) | `4` | client-side fast-fail limit shown in the upload box; keep equal to `MAX_FILE_SIZE_MB` |
 | `RATE_LIMIT_DISABLED` | unset | set to `true` to disable the auth rate limiter (used by the test suite) |
 | `VITE_API_URL` (frontend) | `http://localhost:8000` | |
 
@@ -294,12 +308,12 @@ cd backend
 pytest
 ```
 
-73 tests across `tests/test_auth.py`, `test_password_reset.py`,
+81 tests across `tests/test_auth.py`, `test_password_reset.py`,
 `test_documents.py`, `test_search.py`, `test_collections.py`,
 `test_conversations.py`, `test_dashboard.py`, `test_sources.py`,
 `test_evaluation.py`, `test_authorization.py`. Each test gets an isolated
-temp SQLite file; Chroma is reset before every test (see
-`tests/conftest.py` for why — its client is a process-wide singleton).
+temp SQLite file, and the Gemini embedding call is swapped for a
+deterministic offline bag-of-words fake (`tests/conftest.py`).
 Gemini is replaced by a deterministic fake by default (`FakeGeminiClient`
 in `conftest.py`) via `app.dependency_overrides` — no test hits the real
 API or burns quota. Real PDFs for page-number tests are generated on the
@@ -316,8 +330,24 @@ including sources, semantic search, change-password, and delete-account —
 cross-user, returns 404 or 401) plus a path-traversal filename test and a
 tampered-JWT test.
 
-Frontend: `cd frontend && npm run build` (production build) and
-`npm run lint` (oxlint). The full golden path (landing → signup → upload
+Frontend: `cd frontend && npm run build` (production build),
+`npm run lint` (oxlint) and `npm run test:e2e` (Playwright, 65 tests).
+The e2e suite runs against a production build. Every API call is mocked in
+the browser, so it needs no backend or Gemini key, and an unmocked call
+fails the test instead of reaching production. It covers:
+
+- routing and the protected-route redirect;
+- cookie consent: accept, reject, persist across reloads, and withdrawal
+  deleting the stored theme;
+- the required 18+/Terms checkbox at signup;
+- each Forgot Password delivery mode;
+- password-confirmed account deletion, data export and cookie settings;
+- **axe-core WCAG 2.2 AA** scans of every public route in light and dark
+  mode, on desktop and mobile;
+- `e2e/csp.spec.js`, which replays the production CSP from `vercel.json`
+  and fails on any violation.
+
+Run `npx playwright install chromium` once before the first run. The full golden path (landing → signup → upload
 → chat with real grounded answers and citations → verify the grounding
 refusal on an unsupported question → collections → conversations
 rename/search → sources → analytics (both tabs) → settings
@@ -336,46 +366,37 @@ sources panel's existing `lg:` collapse.
 
 ## Deployment
 
-Live on Azure:
+Live on Vercel + TiDB Cloud, all on free tiers with no card:
 
-- **App**: https://polite-coast-06d46f000.6.azurestaticapps.net
-- **API**: https://docintel-api-stephan.azurewebsites.net (`/health`)
+- **App**: https://docmind-kohl-pi.vercel.app (Vercel project `docmind`, root `frontend/`)
+- **API**: https://docmind-api-kappa.vercel.app (`/health`; Vercel project `docmind-api`, root `backend/`, FastAPI via `index.py`)
+- **DB**: TiDB Cloud Starter, database `docmind` (Singapore)
 
-Backend on an App Service (Linux, Python 3.12, B1), `DATABASE_URL`,
-`CHROMA_PATH`, and `UPLOAD_DIR` all pointed at the `/home` volume, which is
-the persistent disk on Linux App Service — anywhere else (`/tmp`,
-wwwroot-adjacent paths) gets wiped on restart, and SQLite + Chroma + the
-uploaded files are all just files on disk. Frontend on a Static Web App,
-built with `VITE_API_URL` pointed at the backend above. `GEMINI_API_KEY`,
-`JWT_SECRET`, and `FRONTEND_URL` are server-side app settings only — never
-shipped to the frontend build.
+Deploy with `vercel deploy --prod` from `frontend/` **and then**
+`backend/`, always together (frontend first: the new frontend works with
+the old API, but not the other way round): the API's signup and account-deletion
+contracts changed with the terms-acceptance work, so a backend deployed on
+its own breaks the live frontend. See `docs/LAUNCH_READINESS.md` for the
+checklist, smoke test and rollback. The API function is pinned to `sin1`
+(Singapore) in `backend/vercel.json`, next to the database. Backend
+env vars (production): `DATABASE_URL`, `GEMINI_API_KEY`, `GEMINI_MODEL`,
+`JWT_SECRET`, `MAX_FILE_SIZE_MB=4`, `CORS_ORIGINS` and `FRONTEND_URL` (the
+app URL). The frontend needs `VITE_API_URL`, which is baked in at build time.
+Tables are created on startup by `init_db()`.
 
-Three real deployment-specific problems came up getting this live, each
-found from actual failed/slow deploys, not anticipated in advance:
+The original deployment was Azure (App Service + Static Web Apps, with
+SQLite, Chroma and uploads on the `/home` disk). Moving to serverless meant
+removing every dependency on a local disk and on heavy local models:
 
-- **`requirements.txt`'s PyTorch pin used `--extra-index-url` for the
-  CPU-only wheel index instead of `--index-url`.** `--extra-index-url` is
-  a lower-priority fallback, so the resolver picked plain `torch` off
-  PyPI's default index — the CUDA-bundled build, which drags in ~15
-  `nvidia-cuda-*`/`triton` packages nobody needs on a CPU App Service plan.
-  Bytecode-compiling those 17,000+ files during the Oryx build blew past
-  the deploy timeout. Fixed by making the CPU index primary
-  (`--index-url https://download.pytorch.org/whl/cpu`) and PyPI the
-  fallback (`--extra-index-url https://pypi.org/simple`) — same
-  `requirements.txt`, correct wheel.
-- **Container startup probe timeout.** `sentence-transformers` downloads
-  `all-MiniLM-L6-v2` from the Hugging Face Hub the first time `rag.py` is
-  imported, which is slower than Azure's default 230s startup probe. Fixed
-  with `WEBSITES_CONTAINER_START_TIME_LIMIT=600` (matched to gunicorn's own
-  `--timeout 600`) and `HF_HOME=/home/data/hf_cache` so the model is cached
-  on the persistent volume and only downloads once, not on every restart.
-- **SPA routing 404s on Static Web Apps.** Direct navigation to a
-  client-side route (`/signup`, `/dashboard`, ...) isn't a real static
-  file, so without a fallback rule the host returns a genuine 404 instead
-  of serving `index.html` and letting react-router handle it. Fixed with
-  `frontend/public/staticwebapp.config.json`'s `navigationFallback`
-  rewrite (excluding `/assets/*` and the SVGs so real static assets still
-  resolve directly).
+- **Chroma + sentence-transformers/PyTorch → TiDB vector search + Gemini
+  embeddings.** A serverless function has no persistent disk, and PyTorch
+  alone is bigger than a function bundle should be. Chunks and their
+  embeddings now live in TiDB, and similarity search is a single SQL query
+  (`ORDER BY VEC_COSINE_DISTANCE(embedding, :q)`).
+- **Uploads on disk → bytes in the DB** (`documents.file_data`, `LONGBLOB`),
+  served by the ownership-gated `/documents/{id}/file` route.
+- **Timezones.** MySQL `DATETIME` drops tzinfo, so a `UTCDateTime` column
+  type stores UTC and re-attaches it on load.
 
 ## Security
 
@@ -389,23 +410,31 @@ found from actual failed/slow deploys, not anticipated in advance:
   their SHA-256 hash is ever stored.
 - File uploads: extension allowlist (PDF/TXT/MD) checked both client-side
   (fast-fail UX) and server-side (authoritative), size cap, content-hash
-  dedup, filenames sanitized before touching disk (path-traversal and
-  Windows-reserved-name safe).
+  dedup; bytes are stored in the DB (never on disk) and download
+  filenames are sanitized.
 - `GEMINI_API_KEY` is read server-side only (`config.py`), never exposed
   to the frontend.
 - CORS origins are environment-configured, not hardcoded.
+- The frontend sends a strict Content-Security-Policy (no third-party
+  scripts, styles or fonts; `connect-src` limited to the API), plus HSTS,
+  `X-Frame-Options: DENY`, `nosniff`, a referrer policy and a permissions
+  policy (`frontend/vercel.json`). The API sets its own security headers.
+- Privacy: no cookies, analytics or trackers. The optional theme preference
+  is stored only with consent. Data export is at `GET /auth/me/export`, and
+  account deletion needs the password. Third parties and what they
+  receive: `docs/THIRD_PARTY_AUDIT.md`.
 - `.env` files (both `backend/.env` and `frontend/.env`) are gitignored;
   `.env.example`/`.env.production` stay tracked since they hold no real
   secrets.
 
 ## What this demonstrates (interview prep)
 
-Beyond the original project's RAG fundamentals (chunking, local embeddings,
-Chroma retrieval, grounded generation, streaming, citation UX), this
+Beyond the original project's RAG fundamentals (chunking, embeddings,
+vector retrieval, grounded generation, streaming, citation UX), this
 version demonstrates:
 
-- Multi-tenant data modeling: a single Chroma collection made safely
-  multi-user via consistent metadata scoping, not a separate vector store
+- Multi-tenant data modeling: a single vector table made safely
+  multi-user via consistent `user_id` scoping, not a separate vector store
   per user.
 - Designing citations that don't lie: page numbers are only ever shown
   when they're real (pulled from pdfplumber's actual page boundaries).

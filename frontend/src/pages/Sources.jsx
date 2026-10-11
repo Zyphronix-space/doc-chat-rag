@@ -83,7 +83,7 @@ export default function Sources() {
                   >
                     {s.document_name}
                   </Link>
-                  {s.page_number != null && <span className="text-xs text-gray-400 ml-1.5">· p.{s.page_number}</span>}
+                  {s.page_number != null && <span className="text-xs text-gray-500 dark:text-gray-400 ml-1.5">· p.{s.page_number}</span>}
                 </div>
                 <Link
                   to={`/chat/${s.conversation_id}`}
@@ -93,7 +93,7 @@ export default function Sources() {
                 </Link>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-300 mt-2 whitespace-pre-wrap">{s.snippet}</p>
-              <p className="text-xs text-gray-400 mt-2">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                 from "{s.conversation_title}" · {formatTime(s.created_at)}
               </p>
             </GlassCard>

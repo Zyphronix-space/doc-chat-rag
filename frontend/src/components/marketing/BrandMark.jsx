@@ -1,0 +1,15 @@
+// DocMind's mark: a page with a folded corner and a highlighted line, which
+// is the "answers that cite the page" idea. Original artwork (also used for
+// favicon.svg and the social preview image).
+export default function BrandMark({ size = 32, className = '' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" focusable="false" className={className}>
+      <rect width="32" height="32" rx="9" fill="#2054d1" />
+      <path d="M10 7.5h8.5L23 12v12.5a1 1 0 0 1-1 1H10a1 1 0 0 1-1-1v-16a1 1 0 0 1 1-1Z" fill="#fff" />
+      <path d="M18.5 7.5V11a1 1 0 0 0 1 1H23" fill="#bed6fd" />
+      <rect x="11.5" y="15" width="9" height="1.6" rx=".8" fill="#8fbbfb" />
+      <rect x="11.5" y="18.4" width="9" height="2.4" rx="1" fill="#facc15" />
+      <rect x="11.5" y="22.4" width="6" height="1.6" rx=".8" fill="#8fbbfb" />
+    </svg>
+  )
+}

@@ -21,15 +21,17 @@ export default function Topbar() {
           <Icon name="menu" />
         </button>
         <button
-          className="hidden md:flex items-center gap-1.5 text-xs text-gray-400 border border-gray-200 dark:border-gray-700 rounded-full px-3 py-1.5 hover:border-accent-400 hover:text-accent-600 dark:hover:text-accent-400"
+          className="hidden md:flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 rounded-full px-3 py-1.5 hover:border-accent-400 hover:text-accent-600 dark:hover:text-accent-400"
           onClick={() => window.dispatchEvent(new CustomEvent('docmind:open-palette'))}
         >
           <span aria-hidden>⌘K</span> Search or jump to…
         </button>
         <div className="flex items-center gap-3">
           <button
+            type="button"
             onClick={toggle}
-            title="Toggle theme"
+            title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
             className="w-8 h-8 flex items-center justify-center rounded-full text-gray-500 dark:text-gray-300 hover:bg-black/[0.04] dark:hover:bg-white/[0.06]"
           >
             <Icon name={theme === 'dark' ? 'sun' : 'moon'} />

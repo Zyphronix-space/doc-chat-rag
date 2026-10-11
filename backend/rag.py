@@ -1,40 +1,81 @@
 """Document ingestion and retrieval for the RAG pipeline.
 
-Chunking uses LangChain's RecursiveCharacterTextSplitter; embedding, storage,
-and retrieval are done directly against Chroma so the actual RAG mechanics
-aren't hidden behind a chain abstraction.
+Chunking uses LangChain's RecursiveCharacterTextSplitter; embedding is done
+with the Gemini embedding API, and chunks + their vectors live in the same
+relational database as everything else (the `chunks` table, see models.py).
 
-Every chunk is tagged with `user_id` and `document_id` metadata so retrieval
-can be scoped per-user (always) and per-document/collection (when a
-conversation is scoped to specific documents) via Chroma's `where` filter —
-Chroma itself has no notion of users or documents, this file is what makes
-it behave like a multi-tenant store.
+On TiDB the embedding column is a native `VECTOR(n)` and similarity search
+runs in SQL via `VEC_COSINE_DISTANCE`. On SQLite (local dev / the test
+suite) the vector is stored as JSON text and cosine distance is computed in
+Python — same results, same API, no extra service needed.
+
+Every query is scoped by `user_id` (always) and by `document_id IN (...)`
+when a conversation is scoped to specific documents or a collection — a
+chunk query can never cross users even if an authorization check elsewhere
+had a bug.
 """
 
-import os
+import math
 import uuid
 
-import chromadb
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from sentence_transformers import SentenceTransformer
+from sqlalchemy import String, bindparam, delete, func, select
 
 import config
+import db as db_module
+from models import Chunk
 
-os.makedirs(config.CHROMA_PATH, exist_ok=True)
+# Chunks farther than this (cosine distance, 0 = identical direction) are
+# treated as irrelevant to the query and dropped — keeps casual messages
+# ("hi", "thanks") from being force-fit into an unrelated document excerpt.
+MAX_RELEVANT_DISTANCE = config.MAX_RELEVANT_DISTANCE
 
-COLLECTION_NAME = "documents"
-# Chunks farther than this (squared L2, on MiniLM embeddings) are treated as
-# irrelevant to the query and dropped — keeps casual messages ("hi", "thanks")
-# from being force-fit into an unrelated document excerpt.
-MAX_RELEVANT_DISTANCE = 1.6
-
-embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
-client = chromadb.PersistentClient(path=config.CHROMA_PATH)
-collection = client.get_or_create_collection(COLLECTION_NAME)
+_EMBED_BATCH = 100  # Gemini batchEmbedContents caps requests at 100 texts
 
 
 def _splitter() -> RecursiveCharacterTextSplitter:
     return RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=150)
+
+
+_genai_client = None
+
+
+def embed_texts(texts: list[str], task_type: str) -> list[list[float]]:
+    """Embeds texts with Gemini. `task_type` is RETRIEVAL_DOCUMENT for chunks
+    and RETRIEVAL_QUERY for questions — asymmetric embeddings separate
+    relevant from irrelevant chunks noticeably better than symmetric ones.
+    Tests replace this function with a deterministic offline fake."""
+    global _genai_client
+    from google import genai
+    from google.genai import types
+
+    if not config.GEMINI_API_KEY:
+        raise RuntimeError("GEMINI_API_KEY is not configured on the server")
+    if _genai_client is None:
+        _genai_client = genai.Client(api_key=config.GEMINI_API_KEY)
+
+    vectors: list[list[float]] = []
+    for start in range(0, len(texts), _EMBED_BATCH):
+        result = _genai_client.models.embed_content(
+            model=config.EMBEDDING_MODEL,
+            contents=texts[start : start + _EMBED_BATCH],
+            config=types.EmbedContentConfig(
+                task_type=task_type, output_dimensionality=config.EMBEDDING_DIM
+            ),
+        )
+        vectors.extend(_normalize(e.values) for e in result.embeddings)
+    return vectors
+
+
+def _normalize(vec: list[float]) -> list[float]:
+    # Gemini only pre-normalizes the full 3072-dim output; truncated
+    # (Matryoshka) dimensions must be re-normalized for cosine to behave.
+    norm = math.sqrt(sum(v * v for v in vec)) or 1.0
+    return [v / norm for v in vec]
+
+
+def _is_tidb(session) -> bool:
+    return session.get_bind().dialect.name == "mysql"
 
 
 def ingest_document(
@@ -42,48 +83,62 @@ def ingest_document(
     document_id: int,
     filename: str,
     pages: list[tuple[int | None, str]],
-    collection_id: int | None = None,
+    collection_id: int | None = None,  # noqa: ARG001 — membership is resolved via SQL at query time
 ) -> int:
-    """Chunk per page (so real page numbers survive into chunk metadata),
-    embed, and store. Returns the total chunk count across all pages."""
+    """Chunk per page (so real page numbers survive into chunk rows), embed,
+    and store. Returns the total chunk count across all pages."""
     splitter = _splitter()
-    all_chunks: list[str] = []
-    all_metadatas: list[dict] = []
-    chunk_index = 0
-
+    rows: list[dict] = []
     for page_number, page_text in pages:
         if not page_text or not page_text.strip():
             continue
-        page_chunks = splitter.split_text(page_text)
-        for text in page_chunks:
-            meta = {
-                "user_id": user_id,
-                "document_id": document_id,
-                "source": filename,
-                "chunk_index": chunk_index,
-            }
-            if page_number is not None:
-                meta["page_number"] = page_number
-            if collection_id is not None:
-                meta["collection_id"] = collection_id
-            all_chunks.append(text)
-            all_metadatas.append(meta)
-            chunk_index += 1
+        for chunk_text in splitter.split_text(page_text):
+            rows.append({"text": chunk_text, "page_number": page_number})
 
-    if not all_chunks:
+    if not rows:
         return 0
 
-    embeddings = embedding_model.encode(all_chunks).tolist()
-    ids = [str(uuid.uuid4()) for _ in all_chunks]
-    collection.add(ids=ids, embeddings=embeddings, documents=all_chunks, metadatas=all_metadatas)
-    return len(all_chunks)
+    embeddings = embed_texts([r["text"] for r in rows], "RETRIEVAL_DOCUMENT")
+
+    session = db_module.SessionLocal()
+    try:
+        session.execute(delete(Chunk).where(Chunk.document_id == document_id))
+        for index, (row, emb) in enumerate(zip(rows, embeddings)):
+            session.add(
+                Chunk(
+                    id=str(uuid.uuid4()),
+                    user_id=user_id,
+                    document_id=document_id,
+                    source=filename,
+                    chunk_index=index,
+                    page_number=row["page_number"],
+                    text=row["text"],
+                    embedding=emb,
+                )
+            )
+        session.commit()
+    finally:
+        session.close()
+    return len(rows)
 
 
-def _scope_where(user_id: int, document_ids: list[int] | None = None) -> dict:
-    clauses: list[dict] = [{"user_id": user_id}]
-    if document_ids is not None:
-        clauses.append({"document_id": {"$in": document_ids}})
-    return clauses[0] if len(clauses) == 1 else {"$and": clauses}
+def _chunk_dict(chunk: Chunk, distance: float | None) -> dict:
+    return {
+        "text": chunk.text,
+        "source": chunk.source,
+        "document_id": chunk.document_id,
+        "chunk_id": chunk.id,
+        "chunk_index": chunk.chunk_index,
+        "page_number": chunk.page_number,
+        "distance": distance,
+    }
+
+
+def _cosine_distance(a: list[float], b: list[float]) -> float:
+    dot = sum(x * y for x, y in zip(a, b))
+    na = math.sqrt(sum(x * x for x in a)) or 1.0
+    nb = math.sqrt(sum(y * y for y in b)) or 1.0
+    return 1.0 - dot / (na * nb)
 
 
 def retrieve_chunks(
@@ -92,80 +147,58 @@ def retrieve_chunks(
     document_ids: list[int] | None = None,
     top_k: int = 4,
 ) -> list[dict]:
-    query_embedding = embedding_model.encode([question]).tolist()
-    results = collection.query(
-        query_embeddings=query_embedding,
-        n_results=top_k,
-        where=_scope_where(user_id, document_ids),
-        include=["documents", "metadatas", "distances"],
-    )
-
-    if not results["documents"] or not results["documents"][0]:
+    if document_ids is not None and not document_ids:
         return []
 
-    return [
-        {
-            "text": doc,
-            "source": meta["source"],
-            "document_id": meta["document_id"],
-            "chunk_id": chunk_id,
-            "chunk_index": meta["chunk_index"],
-            "page_number": meta.get("page_number"),
-            "distance": distance,
-        }
-        for doc, meta, distance, chunk_id in zip(
-            results["documents"][0],
-            results["metadatas"][0],
-            results["distances"][0],
-            results["ids"][0],
-        )
-        if distance <= MAX_RELEVANT_DISTANCE
-    ]
+    query_vec = embed_texts([question], "RETRIEVAL_QUERY")[0]
+
+    session = db_module.SessionLocal()
+    try:
+        if _is_tidb(session):
+            qvec = "[" + ",".join(repr(float(v)) for v in query_vec) + "]"
+            distance = func.VEC_COSINE_DISTANCE(Chunk.embedding, bindparam("qvec", qvec, type_=String)).label(
+                "distance"
+            )
+            stmt = select(Chunk, distance).where(Chunk.user_id == user_id)
+            if document_ids is not None:
+                stmt = stmt.where(Chunk.document_id.in_(document_ids))
+            stmt = stmt.order_by(distance).limit(top_k)
+            scored = [(chunk, float(dist)) for chunk, dist in session.execute(stmt).all()]
+        else:
+            stmt = select(Chunk).where(Chunk.user_id == user_id)
+            if document_ids is not None:
+                stmt = stmt.where(Chunk.document_id.in_(document_ids))
+            scored = sorted(
+                ((c, _cosine_distance(query_vec, c.embedding)) for c in session.scalars(stmt).all()),
+                key=lambda pair: pair[1],
+            )[:top_k]
+
+        return [_chunk_dict(c, d) for c, d in scored if d <= MAX_RELEVANT_DISTANCE]
+    finally:
+        session.close()
 
 
 def get_document_chunks(document_id: int, user_id: int, limit: int = 80) -> list[dict]:
     """All chunks for one document, in original order — used for whole-document
     intents (summarize/explain/etc.) where top-k similarity search would only
     surface a handful of chunks out of a much longer document."""
-    data = collection.get(
-        where=_scope_where(user_id, [document_id]),
-        include=["documents", "metadatas"],
-    )
-    triples = sorted(
-        zip(data["documents"], data["metadatas"], data["ids"]),
-        key=lambda p: p[1]["chunk_index"],
-    )
-    return [
-        {
-            "text": doc,
-            "source": meta["source"],
-            "document_id": meta["document_id"],
-            "chunk_id": chunk_id,
-            "chunk_index": meta["chunk_index"],
-            "page_number": meta.get("page_number"),
-            "distance": None,
-        }
-        for doc, meta, chunk_id in triples[:limit]
-    ]
+    session = db_module.SessionLocal()
+    try:
+        chunks = session.scalars(
+            select(Chunk)
+            .where(Chunk.user_id == user_id, Chunk.document_id == document_id)
+            .order_by(Chunk.chunk_index)
+            .limit(limit)
+        ).all()
+        return [_chunk_dict(c, None) for c in chunks]
+    finally:
+        session.close()
 
 
 def delete_document_chunks(document_id: int, user_id: int) -> None:
-    collection.delete(where=_scope_where(user_id, [document_id]))
-
-
-def update_document_collection(document_id: int, user_id: int, collection_id: int | None) -> None:
-    """Refresh the `collection_id` metadata on every chunk of a document after
-    it's moved — otherwise collection-scoped retrieval would miss chunks
-    still tagged with the document's previous (or no) collection."""
-    data = collection.get(where=_scope_where(user_id, [document_id]), include=["metadatas"])
-    if not data["ids"]:
-        return
-    new_metadatas = []
-    for meta in data["metadatas"]:
-        meta = dict(meta)
-        if collection_id is not None:
-            meta["collection_id"] = collection_id
-        else:
-            meta.pop("collection_id", None)
-        new_metadatas.append(meta)
-    collection.update(ids=data["ids"], metadatas=new_metadatas)
+    session = db_module.SessionLocal()
+    try:
+        session.execute(delete(Chunk).where(Chunk.user_id == user_id, Chunk.document_id == document_id))
+        session.commit()
+    finally:
+        session.close()

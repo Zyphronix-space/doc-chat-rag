@@ -96,7 +96,7 @@ def test_delete_account_removes_user_and_data(client, register_and_login):
     headers, _ = register_and_login("user@example.com")
     client.post("/documents", headers=headers, files={"file": ("notes.txt", io.BytesIO(b"Some content."), "text/plain")})
 
-    res = client.delete("/auth/me", headers=headers)
+    res = client.request("DELETE", "/auth/me", headers=headers, json={"password": "password123"})
     assert res.status_code == 200
 
     me = client.get("/auth/me", headers=headers)
@@ -110,3 +110,89 @@ def test_forgot_password_rate_limited(client, monkeypatch):
         assert res.status_code == 200
     limited = client.post("/auth/forgot-password", json={"email": "nobody@example.com"})
     assert limited.status_code == 429
+
+
+def test_reset_link_never_returned_outside_demo_mode(client, register_and_login, monkeypatch):
+    import config
+
+    monkeypatch.setattr(config, "PASSWORD_RESET_DEMO_MODE", False)
+    register_and_login()
+    known = client.post("/auth/forgot-password", json={"email": "user@example.com"}).json()
+    unknown = client.post("/auth/forgot-password", json={"email": "nobody@example.com"}).json()
+    assert known["demo_reset_link"] is None
+    assert known == unknown  # can't be used to tell which emails are registered
+    assert known["delivery"] == "unavailable"
+
+
+def test_reset_link_is_emailed_when_smtp_configured(client, register_and_login, monkeypatch):
+    import config
+    import mailer
+
+    sent = []
+    monkeypatch.setattr(config, "PASSWORD_RESET_DEMO_MODE", False)
+    monkeypatch.setattr(mailer, "email_configured", lambda: True)
+    monkeypatch.setattr(mailer, "send_password_reset", lambda to, link, ttl: sent.append((to, link)))
+    register_and_login()
+    known = client.post("/auth/forgot-password", json={"email": "user@example.com"}).json()
+    unknown = client.post("/auth/forgot-password", json={"email": "nobody@example.com"}).json()
+    assert known == unknown
+    assert known["delivery"] == "email" and known["demo_reset_link"] is None
+    assert len(sent) == 1 and sent[0][0] == "user@example.com" and "token=" in sent[0][1]
+
+
+def test_register_requires_explicit_terms_acceptance(client):
+    res = client.post("/auth/register", json={"email": "a@example.com", "password": "password123"})
+    assert res.status_code == 400
+    res = client.post(
+        "/auth/register", json={"email": "a@example.com", "password": "password123", "accept_terms": False}
+    )
+    assert res.status_code == 400
+
+
+def test_register_records_terms_version_and_time(client, register_and_login):
+    import config
+
+    _, user = register_and_login()
+    assert user["terms_version"] == config.TERMS_VERSION
+    assert user["terms_accepted_at"] is not None
+
+
+def test_delete_account_requires_correct_password(client, register_and_login):
+    headers, _ = register_and_login()
+    res = client.request("DELETE", "/auth/me", headers=headers, json={"password": "wrong-password"})
+    assert res.status_code == 403
+    assert client.get("/auth/me", headers=headers).status_code == 200
+
+
+def test_delete_account_removes_chunks_too(client, register_and_login):
+    import db as db_module
+    from models import Chunk
+
+    headers, _ = register_and_login()
+    client.post("/documents", headers=headers, files={"file": ("n.txt", io.BytesIO(b"Alpha beta gamma."), "text/plain")})
+    session = db_module.SessionLocal()
+    assert session.query(Chunk).count() > 0
+    session.close()
+    client.request("DELETE", "/auth/me", headers=headers, json={"password": "password123"})
+    session = db_module.SessionLocal()
+    assert session.query(Chunk).count() == 0
+    session.close()
+
+
+def test_export_contains_own_data_only(client, register_and_login):
+    headers, _ = register_and_login("me@example.com")
+    client.post("/documents", headers=headers, files={"file": ("mine.txt", io.BytesIO(b"My own notes."), "text/plain")})
+    other, _ = register_and_login("other@example.com")
+    client.post("/documents", headers=other, files={"file": ("theirs.txt", io.BytesIO(b"Not yours."), "text/plain")})
+
+    data = client.get("/auth/me/export", headers=headers).json()
+    assert data["account"]["email"] == "me@example.com"
+    assert [d["display_name"] for d in data["documents"]] == ["mine.txt"]
+    assert data["documents"][0]["extracted_chunks"][0]["text"] == "My own notes."
+
+
+def test_api_sets_security_headers(client):
+    res = client.get("/health")
+    assert res.headers["x-content-type-options"] == "nosniff"
+    assert res.headers["x-frame-options"] == "DENY"
+    assert res.headers["cache-control"] == "no-store"

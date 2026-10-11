@@ -15,7 +15,7 @@ import config
 
 ALLOWED_EXTENSIONS = {".pdf", ".txt", ".md"}
 # Windows reserved device names and path-separator/traversal characters —
-# stripped/rejected so a crafted filename can't escape UPLOAD_DIR or collide
+# stripped/rejected so a crafted filename can't inject a path or collide
 # with a reserved name when written to disk.
 _UNSAFE_CHARS_RE = re.compile(r'[\\/:*?"<>|\x00-\x1f]')
 _WINDOWS_RESERVED = {

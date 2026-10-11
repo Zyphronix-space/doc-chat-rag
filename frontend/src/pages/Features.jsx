@@ -1,10 +1,11 @@
 import GlassCard from '../components/glass/GlassCard'
+import { LIMITS } from '../config/site'
 
 const SECTIONS = [
   {
     title: 'Document management',
     items: [
-      ['Upload PDF, TXT, or Markdown', 'Up to 20MB per file, validated on the server before anything is stored.'],
+      ['Upload PDF, TXT, or Markdown', `Up to ${LIMITS.maxUploadMb} MB per file, validated on the server before anything is stored.`],
       ['Live processing status', 'Pending → Processing → Ready/Failed, polled live while a document is being ingested.'],
       ['Rename, move, delete', 'Rename a document, move it into a collection, or delete it (removing its extracted chunks too).'],
       ['Search & filter', 'Filter by filename, collection, or status; sort by upload date.'],

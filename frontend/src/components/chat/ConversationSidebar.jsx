@@ -16,7 +16,7 @@ export default function ConversationSidebar({ conversations, onNew, onDelete }) 
       </div>
       <nav className="flex-1 overflow-y-auto px-2 space-y-0.5">
         {conversations.length === 0 && (
-          <p className="text-xs text-gray-400 px-2 py-4 text-center">No conversations yet.</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 px-2 py-4 text-center">No conversations yet.</p>
         )}
         {conversations.map((c) => (
           <NavLink
@@ -35,7 +35,7 @@ export default function ConversationSidebar({ conversations, onNew, onDelete }) 
                 e.stopPropagation()
                 onDelete(c)
               }}
-              className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 shrink-0"
+              className="opacity-0 group-hover:opacity-100 text-gray-500 dark:text-gray-400 hover:text-red-500 shrink-0"
               aria-label={`Delete ${c.title}`}
             >
               ×

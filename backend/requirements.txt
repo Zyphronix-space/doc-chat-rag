@@ -1,22 +1,13 @@
---index-url https://download.pytorch.org/whl/cpu
---extra-index-url https://pypi.org/simple
-
 fastapi
 uvicorn[standard]
 python-multipart
 pdfplumber
-torch
-sentence-transformers
-chromadb
-pysqlite3-binary
 langchain-text-splitters
 google-genai
 python-dotenv
 sqlalchemy
+pymysql
+certifi
 bcrypt
 pyjwt
 email-validator
-gunicorn
-pytest
-pytest-asyncio
-httpx

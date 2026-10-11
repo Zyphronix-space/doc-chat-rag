@@ -71,7 +71,7 @@ def _validate_and_apply_scope(
 
 def _resolve_scope_documents(db: Session, conv: Conversation, user: User) -> list[Document]:
     """Ready-only documents currently in scope — resolved fresh from SQL each
-    time (not cached Chroma metadata) so a collection scope always reflects
+    time (not metadata cached on the chunks) so a collection scope always reflects
     the collection's *current* membership, and never includes a document
     that's still processing or failed."""
     if conv.scope_type == ScopeType.collection:

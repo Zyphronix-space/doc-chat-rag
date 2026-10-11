@@ -1,7 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" fill="none">
-  <rect x="4" y="3" width="40" height="42" rx="9" fill="#0b1424"/>
-  <path d="M14 12 H30 L36 18 V38 H14 Z" fill="#2f6fed"/>
-  <path d="M30 12 V18 H36 Z" fill="#8fbbfb"/>
-  <circle cx="25" cy="27" r="6" fill="none" stroke="#ffffff" stroke-width="2.4"/>
-  <path d="M29.3 31.3 L33 35" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Same artwork as src/components/marketing/BrandMark.jsx -->
+  <rect width="32" height="32" rx="9" fill="#2054d1"/>
+  <path d="M10 7.5h8.5L23 12v12.5a1 1 0 0 1-1 1H10a1 1 0 0 1-1-1v-16a1 1 0 0 1 1-1Z" fill="#fff"/>
+  <path d="M18.5 7.5V11a1 1 0 0 0 1 1H23" fill="#bed6fd"/>
+  <rect x="11.5" y="15" width="9" height="1.6" rx=".8" fill="#8fbbfb"/>
+  <rect x="11.5" y="18.4" width="9" height="2.4" rx="1" fill="#facc15"/>
+  <rect x="11.5" y="22.4" width="6" height="1.6" rx=".8" fill="#8fbbfb"/>
 </svg>

@@ -49,7 +49,7 @@ export default function MessageBubble({ message, onRegenerate, isLast }) {
         )}
 
         {!isUser && !message.streaming && message.content && (
-          <div className="flex gap-3 text-xs text-gray-400">
+          <div className="flex gap-3 text-xs text-gray-500 dark:text-gray-400">
             <button onClick={copy} className="hover:text-accent-600 dark:hover:text-accent-400">
               Copy
             </button>

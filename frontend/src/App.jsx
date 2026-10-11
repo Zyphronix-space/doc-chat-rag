@@ -10,8 +10,12 @@ import Signup from './pages/Signup'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import PrivacyPolicy from './pages/legal/PrivacyPolicy'
-import TermsAndConditions from './pages/legal/TermsAndConditions'
+import TermsOfService from './pages/legal/TermsOfService'
+import RefundPolicy from './pages/legal/RefundPolicy'
 import CookiePolicy from './pages/legal/CookiePolicy'
+import Contact from './pages/Contact'
+import CookieConsent from './components/consent/CookieConsent'
+import ScrollToTop from './components/layout/ScrollToTop'
 
 import Dashboard from './pages/Dashboard'
 import Documents from './pages/Documents'
@@ -28,6 +32,8 @@ import NotFound from './pages/NotFound'
 
 function App() {
   return (
+    <>
+    <ScrollToTop />
     <Routes>
       <Route element={<PublicLayout />}>
         <Route path="/" element={<Landing />} />
@@ -36,9 +42,14 @@ function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-        <Route path="/terms" element={<TermsAndConditions />} />
-        <Route path="/cookie-policy" element={<CookiePolicy />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsOfService />} />
+        <Route path="/refunds" element={<RefundPolicy />} />
+        <Route path="/cookies" element={<CookiePolicy />} />
+        <Route path="/contact" element={<Contact />} />
+        {/* Old policy URLs, kept so existing links keep working. */}
+        <Route path="/privacy-policy" element={<Navigate to="/privacy" replace />} />
+        <Route path="/cookie-policy" element={<Navigate to="/cookies" replace />} />
       </Route>
 
       <Route element={<ProtectedRoute />}>
@@ -60,6 +71,8 @@ function App() {
       <Route path="/404" element={<NotFound />} />
       <Route path="*" element={<Navigate to="/404" replace />} />
     </Routes>
+    <CookieConsent />
+    </>
   )
 }
 

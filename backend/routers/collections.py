@@ -1,10 +1,9 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
-import rag
 from db import get_db
 from deps import get_current_user, not_found
-from models import Collection, Document, DocumentStatus, User
+from models import Collection, Document, User
 from schemas import CollectionCreate, CollectionDetailOut, CollectionOut, CollectionUpdate, DocumentOut
 
 router = APIRouter(prefix="/collections", tags=["collections"])
@@ -70,13 +69,10 @@ def update_collection(
 def delete_collection(collection_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     coll = _get_owned_collection(db, collection_id, current_user)
 
-    # Deleting a folder un-files its documents rather than destroying them —
-    # matches the FK's ondelete=SET NULL, but Chroma metadata needs the same
-    # update explicitly (it doesn't know about SQL foreign keys).
-    docs = db.query(Document).filter(Document.collection_id == coll.id).all()
-    for doc in docs:
-        if doc.status == DocumentStatus.ready:
-            rag.update_document_collection(doc.id, current_user.id, None)
+    # Deleting a folder un-files its documents rather than destroying them.
+    # Done explicitly rather than relying on the FK's ondelete=SET NULL,
+    # which SQLite doesn't enforce without PRAGMA foreign_keys.
+    db.query(Document).filter(Document.collection_id == coll.id).update({Document.collection_id: None})
 
     db.delete(coll)
     db.commit()
@@ -95,8 +91,6 @@ def add_document_to_collection(
         raise not_found("Document")
 
     doc.collection_id = coll.id
-    if doc.status == DocumentStatus.ready:
-        rag.update_document_collection(doc.id, current_user.id, coll.id)
     db.commit()
     db.refresh(coll)
 
@@ -119,8 +113,6 @@ def remove_document_from_collection(
         raise not_found("Document")
 
     doc.collection_id = None
-    if doc.status == DocumentStatus.ready:
-        rag.update_document_collection(doc.id, current_user.id, None)
     db.commit()
     db.refresh(coll)
 
