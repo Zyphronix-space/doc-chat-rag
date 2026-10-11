@@ -10,8 +10,18 @@
 
 # DocMind — AI Document Intelligence Workspace
 
-**Live demo:** https://docmind-kohl-pi.vercel.app
-(backend API: https://docmind-api-kappa.vercel.app/health)
+<p align="center">
+  <a href="https://docmind-kohl-pi.vercel.app"><img src="https://img.shields.io/badge/Live%20demo-docmind--kohl--pi.vercel.app-2054d1?style=for-the-badge&logo=vercel&logoColor=white" alt="Live demo" /></a>
+  <a href="https://docmind-api-kappa.vercel.app/health"><img src="https://img.shields.io/badge/API-health-16a34a?style=for-the-badge&logo=fastapi&logoColor=white" alt="API health" /></a>
+</p>
+
+**Live demo:** https://docmind-kohl-pi.vercel.app (free, no card; sign up with any email.
+It's 18+ only, and uploads go to Google's free Gemini tier, so don't upload anything
+confidential.) The API is at https://docmind-api-kappa.vercel.app/health.
+
+<p align="center">
+  <img src="docs/screenshots/chat.png" alt="Chatting with an employee handbook: each answer cites the PDF page it came from" width="100%" />
+</p>
 
 A multi-user AI knowledge workspace: upload documents, organize them into
 collections, and chat against one document, several, or a whole collection —
@@ -24,6 +34,19 @@ per-user document CRUD, collections, persisted conversations, page-accurate
 citations, a command palette, real usage analytics, and a small honest RAG
 evaluation framework — all on top of an embedding retrieval pipeline that runs
 entirely inside TiDB Cloud (native vector search).
+
+## Screenshots
+
+| Landing page | Documents |
+|---|---|
+| <img src="docs/screenshots/landing.png" alt="DocMind landing page" /> | <img src="docs/screenshots/documents.png" alt="Documents page with upload box and free-tier notice" /> |
+
+<p align="center">
+  <img src="docs/screenshots/landing-mobile-dark.png" alt="Landing page on mobile, dark mode" width="280" />
+</p>
+
+The screenshots are from the live deployment, using a demo account and a fictional sample
+handbook (both deleted afterwards).
 
 ## Product flow
 
